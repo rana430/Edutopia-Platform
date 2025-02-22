@@ -53,6 +53,8 @@ namespace Edutopia.Services
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
                 return null; // Invalid credentials
 
+            user.LastLoginAt = DateTime.UtcNow;
+
             return GenerateJwtToken(user);
         }
 
