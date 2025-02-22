@@ -35,23 +35,33 @@ namespace Edutopia.Controllers
             return Ok(new { Token = token });
         }
 
+        /// <summary>
+        /// Initiates a password reset request. 
+        /// Sends a reset token in the response header.
+        /// </summary>
         [HttpPost("forgot-password")]
-        public IActionResult ForgotPassword([FromBody] ForgotPasswordDTO dto)
+        public IActionResult ForgotPassword([FromBody] ForgotPasswordDTO request)
         {
-            var result = _authService.ForgotPassword(dto.Email);
-            return Ok(new { Message = result });
+            var result = _authService.ForgotPassword(request.Email, Response);
+
+            if (result == "User not found.")
+                return NotFound(new { message = result });
+
+            return Ok(new { message = result });
         }
 
+        /// <summary>
+        /// Resets the user's password using a token from the request header.
+        /// </summary>
         [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO model)
+        public IActionResult ResetPassword([FromBody] ResetPasswordDTO request)
         {
-            var result = _authService.ResetPassword(model.Token, model.NewPassword);
-            if (!result)
-                return BadRequest("Invalid or expired token");
+            var result = _authService.ResetPassword(request.NewPassword, Request);
 
-            return Ok(new { Message = "Password reset successful" });
+            if (result == "Missing reset token." || result == "Invalid or expired reset token." || result == "User not found.")
+                return BadRequest(new { message = result });
+
+            return Ok(new { message = result });
         }
-
-
     }
 }

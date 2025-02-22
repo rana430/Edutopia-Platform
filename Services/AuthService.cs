@@ -85,27 +85,87 @@ namespace Edutopia.Services
         /// Handles password reset by generating a reset token.
         /// (You need to implement email sending for real use)
         /// </summary>
-        public string ForgotPassword(string email)
+        public string ForgotPassword(string email, HttpResponse response)
         {
             var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
             if (user == null) return "User not found.";
 
-            var resetToken = Convert.ToBase64String(Guid.NewGuid().ToByteArray()); // Simple token
-            // Save this token and send via email (Not implemented here)
+            var token = GenerateResetToken(user);
 
-            return $"Your password reset token: {resetToken}";
+            // Set token in response header
+            response.Headers["Token"] = token;
+
+            // TODO: Send token via email
+
+            return "A password reset link has been sent to your email.";
         }
 
-        public bool ResetPassword(string email, string newPassword)
+        private string GenerateResetToken(User user)
         {
-            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
-            if (user == null) return false;
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]);
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword); // Replace with actual hashing logic
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()) // Store user ID in the token
+            }),
+                Expires = DateTime.UtcNow.AddMinutes(15), // Token expires in 15 minutes
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
+
+        public string ResetPassword(string newPassword, HttpRequest request)
+        {
+            if (!request.Headers.TryGetValue("Token", out var token))
+                return "Missing reset token.";
+
+            var claims = ValidateResetToken(token);
+            if (claims == null)
+                return "Invalid or expired reset token.";
+
+            var userId = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = _dbContext.Users.FirstOrDefault(u => u.Id.ToString() == userId);
+
+            if (user == null)
+                return "User not found.";
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+
             _dbContext.Users.Update(user);
             _dbContext.SaveChanges();
 
-            return true;
+            return "Password has been successfully reset.";
         }
+
+        private ClaimsPrincipal ValidateResetToken(string token)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]);
+
+            try
+            {
+                var claims = tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ClockSkew = TimeSpan.Zero
+                }, out SecurityToken validatedToken);
+
+                return claims;
+            }
+            catch
+            {
+                return null; // Token is invalid or expired
+            }
+        }
+
     }
 }
