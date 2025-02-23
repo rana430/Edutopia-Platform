@@ -28,7 +28,7 @@ namespace Edutopia.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginDTO dto)
         {
-            var token = _authService.Login(dto.Email, dto.Password);
+            var token = _authService.Login(dto.Email, dto.Password, Response);
             if (token == null)
                 return Unauthorized("Invalid credentials.");
 

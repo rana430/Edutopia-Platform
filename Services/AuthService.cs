@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Edutopia.Models.Entities;
 using Edutopia.Data;
+using Azure;
 
 namespace Edutopia.Services
 {
@@ -47,7 +48,7 @@ namespace Edutopia.Services
         /// <summary>
         /// Logs in and returns a JWT token.
         /// </summary>
-        public string? Login(string email, string password)
+        public string? Login(string email, string password, HttpResponse response)
         {
             var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
@@ -55,7 +56,11 @@ namespace Edutopia.Services
 
             user.LastLoginAt = DateTime.UtcNow;
 
-            return GenerateJwtToken(user);
+            var token = GenerateResetToken(user);
+
+            // Set token in response header
+            response.Headers["Token"] = token;
+            return "User Logged in Successfully";
         }
 
         /// <summary>
