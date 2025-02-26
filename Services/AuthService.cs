@@ -150,7 +150,7 @@ namespace Edutopia.Services
             return "Password has been successfully reset.";
         }
 
-        private ClaimsPrincipal ValidateResetToken(string token)
+        public ClaimsPrincipal ValidateResetToken(string token)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]);
