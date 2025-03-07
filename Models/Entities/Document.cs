@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Edutopia.Models.Entities;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -9,6 +10,9 @@ public class Document
 
     [Required]
     public Guid UserId { get; set; }
+
+    [ForeignKey(nameof(UserId))] // Move the attribute to the navigation property
+    public virtual User User { get; set; }
 
     [Required]
     [MaxLength(255)]
@@ -21,8 +25,6 @@ public class Document
     [Required]
     [MaxLength(100)]
     public string FileType { get; set; }
-
-    public string Summary { get; set; }  // AI-Generated Summary
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

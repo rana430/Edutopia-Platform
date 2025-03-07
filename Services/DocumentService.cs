@@ -74,7 +74,6 @@ public class DocumentService
             FilePath = filePath,
             FileType = fileExtension,
             Status = "Processing", // AI processing is not yet completed
-            Summary = ""
         };
 
         _dbContext.Documents.Add(document);
