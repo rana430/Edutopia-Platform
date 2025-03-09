@@ -11,6 +11,7 @@ out/
 publish/
 TestResults/
 
+
 # Ignore logs and debugging
 *.log
 *.tlog

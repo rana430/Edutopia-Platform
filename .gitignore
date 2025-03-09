@@ -3,3 +3,12 @@ venv
 .env
 
 */.obj
+*/.bin
+*/.dll
+*/.exe
+
+.vs
+v17
+
+config
+uploads
