@@ -30,6 +30,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DocumentService>();
 builder.Services.AddScoped<VideoService>();
