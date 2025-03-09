@@ -7,6 +7,8 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore;
 
 namespace Edutopia.Services
 {
@@ -27,14 +29,15 @@ namespace Edutopia.Services
 
         public async Task<(bool Success, string Message, Guid VideoId)> UploadVideoAsync(VideoUploadDTO model, HttpRequest request)
         {
-            if (string.IsNullOrEmpty(model.VideoUrl))
+            
+			if (string.IsNullOrEmpty(model.VideoUrl))
                 return (false, "Video URL is required.", Guid.Empty);
 
             if (!request.Headers.TryGetValue("Token", out var token))
                 return (false, "Missing reset token.", Guid.Empty);
 
-            var claims = _authService.ValidateResetToken(token);
-            if (claims == null)
+            var claims = _authService.ValidateResetToken(token); //solve with authorize.use auth
+			if (claims == null)
                 return (false, "Invalid Token", Guid.Empty);
 
             using (var scope = _scopeFactory.CreateScope())
@@ -49,7 +52,7 @@ namespace Edutopia.Services
 
                 var video = new Video
                 {
-                    UserId = user.Id,
+                   //removed user id
                     VideoUrl = model.VideoUrl,
                     Status = "Processing"
                 };
@@ -99,7 +102,7 @@ namespace Edutopia.Services
                     var rawResponse = JsonDocument.Parse(responseContent);
                     Console.WriteLine($"Raw response structure: {JsonSerializer.Serialize(rawResponse, new JsonSerializerOptions { WriteIndented = true })}");
                 }
-
+                //here
                 Console.WriteLine("Video processing successful");
                 var video = await dbContext.Videos.FindAsync(videoId);
                 if (video != null)

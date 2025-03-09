@@ -15,11 +15,13 @@ namespace Edutopia.Models.Entities
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime LastLoginAt { get; set; }
+		public virtual ICollection<History> Histories { get; set; }
 
-        /// <summary>
-        /// Sets the user's password securely.
-        /// </summary>
-        public void SetPassword(string password)
+
+		/// <summary>
+		/// Sets the user's password securely.
+		/// </summary>
+		public void SetPassword(string password)
         {
             PasswordHash = PasswordHasher.HashPassword(password);
         }

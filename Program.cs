@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Edutopia.Services;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using Edutopia.Services.Interfaces;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,9 +32,11 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DocumentService>();
 builder.Services.AddScoped<VideoService>();
+builder.Services.AddScoped<ISessionService,SessionService>();
 //builder.Services.AddSingleton<IWebHostEnvironment>(sp => sp.GetRequiredService<IWebHostEnvironment>());
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer(); // Required for minimal APIs

@@ -7,14 +7,9 @@ public class Video
 {
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
-
-    [Required]
-    public Guid UserId { get; set; }
-
-    [ForeignKey(nameof(UserId))]
-    public virtual User User { get; set; }
-
-    [Required]
+	[Required]
+	public Guid HistoryId { get; set; }
+	[Required]
     [MaxLength(500)]
     public string VideoUrl { get; set; }
 
@@ -26,4 +21,6 @@ public class Video
     [Required]
     [MaxLength(50)]
     public string Status { get; set; } = "Processing";
+	public ICollection<History> Histories { get; set; }
+
 }

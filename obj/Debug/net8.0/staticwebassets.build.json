@@ -1,12 +1,11 @@
 {
   "Version": 1,
-  "Hash": "fKL1bnJi7iw5VI7Q+TNQXast72+qdJed4OD2nNZLTRw=",
+  "Hash": "NgFD1kPO7SmJ3lSNeKimh2mEcgaw3Jp6JmgWziRs2bM=",
   "Source": "Edutopia",
   "BasePath": "_content/Edutopia",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
   "DiscoveryPatterns": [],
-  "Assets": [],
-  "Endpoints": []
+  "Assets": []
 }

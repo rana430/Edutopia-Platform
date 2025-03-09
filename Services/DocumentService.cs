@@ -69,7 +69,6 @@ public class DocumentService
         // 2️⃣ Create Document Entry with "Processing" Status
         var document = new Document
         {
-            UserId = user.Id,
             Title = model.Title,
             FilePath = filePath,
             FileType = fileExtension,
