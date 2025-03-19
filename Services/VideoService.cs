@@ -127,7 +127,10 @@ namespace Edutopia.Services
             try
             {
                 // Start diagram processing
-                var requestData = new { video_url = videoUrl };
+                var requestData = new { 
+                    video_url = videoUrl,
+                    session_id = videoId.ToString()  // Send the video ID as session ID
+                };
                 var content = new StringContent(
                     JsonSerializer.Serialize(requestData),
                     Encoding.UTF8,
@@ -167,10 +170,19 @@ namespace Edutopia.Services
 
                     Console.WriteLine($"Successfully started processing with video ID: {videoId}");
 
-                    // Poll for results using the VideoStatusService
-                    var statusResponse = await _videoStatusService.PollVideoStatusAsync(videoId.ToString());
-                    statusResponse.SessionId = videoId.ToString(); // Use video ID as session ID
-                    return statusResponse;
+                    // Get the initial results from the Flask API
+                    var statusResponse = await _videoStatusService.GetVideoStatusAsync(videoId.ToString());
+                    
+                    // Return the response from the Flask API
+                    return new VideoStatusResponse
+                    {
+                        Success = startResult.Success,
+                        Status = statusResponse.Status,
+                        Message = startResult.Message,
+                        SessionId = startResult.SessionId,
+                        DetectedObjects = statusResponse.DetectedObjects,
+                        ObjectCount = statusResponse.ObjectCount
+                    };
                 }
                 catch (HttpRequestException ex)
                 {

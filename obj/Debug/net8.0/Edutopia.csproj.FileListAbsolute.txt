@@ -173,3 +173,16 @@ F:\GP\Edutopia\bin\Debug\net8.0\BCrypt.Net-Next.dll
 F:\GP\Edutopia\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
 F:\GP\Edutopia\bin\Debug\net8.0\Microsoft.Bcl.Memory.dll
 F:\GP\Edutopia\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\etc\jupyter\nbconfig\notebook.d\pydeck.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\altair\vegalite\v5\schema\vega-lite-schema.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\altair\vegalite\v5\schema\vega-themes.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema\benchmarks\issue232\issue.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft201909\metaschema.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft202012\metaschema.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft3\metaschema.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft4\metaschema.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft6\metaschema.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft7\metaschema.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\scipy\stats\tests\data\studentized_range_mpmath_ref.json
+F:\GP\Edutopia\obj\Debug\net8.0\Edutopia.sourcelink.json
+F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\decorator-5.2.1.dist-info\pbr.json

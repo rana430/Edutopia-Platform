@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace Edutopia.Services
 {
@@ -9,9 +10,13 @@ namespace Edutopia.Services
     {
         public bool Success { get; set; }
         public string Status { get; set; }
+        [JsonPropertyName("message")]
         public string Message { get; set; }
+        [JsonPropertyName("session_id")]
         public string SessionId { get; set; }
+        [JsonPropertyName("detected_objects")]
         public object[] DetectedObjects { get; set; }
+        [JsonPropertyName("object_count")]
         public int ObjectCount { get; set; }
     }
 
@@ -36,7 +41,7 @@ namespace Edutopia.Services
             {
                 var response = await _httpClient.GetAsync($"{_baseUrl}/get_results/{sessionId}");
                 response.EnsureSuccessStatusCode();
-                
+
                 return await JsonSerializer.DeserializeAsync<VideoStatusResponse>(
                     await response.Content.ReadAsStreamAsync());
             }
@@ -51,31 +56,6 @@ namespace Edutopia.Services
             }
         }
 
-        public async Task<VideoStatusResponse> PollVideoStatusAsync(string sessionId, int? maxAttempts = null)
-        {
-            var attempts = 0;
-            var maxAttemptsToUse = maxAttempts ?? _maxAttempts;
-
-            while (attempts < maxAttemptsToUse)
-            {
-                var status = await GetVideoStatusAsync(sessionId);
-
-                if (status.Status == "completed" || status.Status == "error")
-                {
-                    return status;
-                }
-
-                await Task.Delay(_pollIntervalSeconds * 1000);
-                attempts++;
-            }
-
-            return new VideoStatusResponse
-            {
-                Status = "timeout",
-                Message = "Video processing timed out",
-                Success = false
-            };
-        }
     }
 
     public class DetectedObject

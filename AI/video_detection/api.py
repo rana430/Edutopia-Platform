@@ -202,55 +202,58 @@ def process_video(video_path, output_folder):
 
 def process_video_background(video_url, session_id):
     """Background task to process video and detect objects."""
-    try:
-        # Download video
-        video_path, download_dir = download_video(video_url)
-        if not video_path:
-            processing_status[session_id] = {'status': 'error', 'message': 'Failed to download video'}
-            return
+    with app.app_context():  # Create application context for the background thread
+        try:
+            # Download video
+            video_path, download_dir = download_video(video_url)
+            if not video_path:
+                processing_status[session_id] = {'status': 'error', 'message': 'Failed to download video'}
+                return
 
-        # Process video to extract objects
-        output_folder = os.path.join(OUTPUT_DIR, session_id)
-        logger.info(f"Detected objects will be saved to: {output_folder}")
-        
-        object_count = process_video(video_path, output_folder)
-        
-        if object_count == 0:
-            processing_status[session_id] = {'status': 'error', 'message': 'No objects detected in video'}
-            return
+            # Process video to extract objects
+            output_folder = os.path.join(OUTPUT_DIR, session_id)
+            logger.info(f"Detected objects will be saved to: {output_folder}")
             
-        # Classify detected objects
-        classified_folder = os.path.join(OUTPUT_DIR, session_id, "classified")
-        logger.info(f"Classified diagrams will be saved to: {classified_folder}")
-        
-        infer_and_save(output_folder, classified_folder, str(MODELS_DIR / "efficientnet_b3 fine-tuned model for image classification.pth"))
-        
-        # Get list of classified objects
-        classified_objects = []
-        for filename in os.listdir(classified_folder):
-            if filename.endswith(('.jpg', '.jpeg', '.png')):
-                classified_objects.append({
-                    'filename': filename,
-                    'path': os.path.join(classified_folder, filename)
-                })
-                logger.info(f"Classified object: {filename}")
-        
-        # Store results
-        processing_results[session_id] = {
-            'success': True,
-            'message': f'Successfully processed video and detected {object_count} objects',
-            'detected_objects': classified_objects,
-            'object_count': object_count,
-            'output_path': classified_folder
-        }
-        processing_status[session_id] = {'status': 'completed'}
-        
-        # Clean up temporary files
-        shutil.rmtree(download_dir)
-        
-    except Exception as e:
-        logger.error(f"Error processing video: {str(e)}")
-        processing_status[session_id] = {'status': 'error', 'message': str(e)}
+            object_count = process_video(video_path, output_folder)
+            
+            if object_count == 0:
+                processing_status[session_id] = {'status': 'error', 'message': 'No objects detected in video'}
+                return
+                
+            # Classify detected objects
+            classified_folder = os.path.join(OUTPUT_DIR, session_id, "classified")
+            logger.info(f"Classified diagrams will be saved to: {classified_folder}")
+            
+            infer_and_save(output_folder, classified_folder, str(MODELS_DIR / "efficientnet_b3 fine-tuned model for image classification.pth"))
+            
+            # Get list of classified objects
+            classified_objects = []
+            for filename in os.listdir(classified_folder):
+                if filename.endswith(('.jpg', '.jpeg', '.png')):
+                    classified_objects.append({
+                        'filename': filename,
+                        'path': os.path.join(classified_folder, filename)
+                    })
+                    logger.info(f"Classified object: {filename}")
+            
+            # Store results
+            processing_results[session_id] = {
+                'success': True,
+                'message': f'Successfully processed video and detected {object_count} objects',
+                'detected_objects': classified_objects,
+                'object_count': object_count,
+                'output_path': classified_folder
+            }
+            processing_status[session_id] = {'status': 'completed'}
+            
+            # Clean up temporary files
+            shutil.rmtree(download_dir)
+
+            return jsonify(processing_results[session_id])
+            
+        except Exception as e:
+            logger.error(f"Error processing video: {str(e)}")
+            processing_status[session_id] = {'status': 'error', 'message': str(e)}
 
 @app.route('/process_video', methods=['POST'])
 def process_video_endpoint():
@@ -261,10 +264,11 @@ def process_video_endpoint():
             return jsonify({'error': 'Missing video_url in request'}), 400
             
         video_url = data['video_url']
-        logger.info(f"Processing video URL: {video_url}")
-        
-        # Create unique session ID
-        session_id = str(uuid.uuid4())
+        session_id = data.get('session_id')  # Get the session_id from the request
+        if not session_id:
+            return jsonify({'error': 'Missing session_id in request'}), 400
+            
+        logger.info(f"Processing video URL: {video_url} with session ID: {session_id}")
         
         # Initialize status
         processing_status[session_id] = {'status': 'processing'}
@@ -294,6 +298,7 @@ def get_results(session_id):
             return jsonify({'error': 'Invalid session ID'}), 404
             
         status = processing_status[session_id]
+        logger.info(f"Processing status: {status}")
         
         if status['status'] == 'processing':
             return jsonify({
@@ -308,6 +313,7 @@ def get_results(session_id):
             })
             
         elif status['status'] == 'completed':
+            logger.info(f"Processing results: {processing_results[session_id]}")
             return jsonify(processing_results[session_id])
             
         else:

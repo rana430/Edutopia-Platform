@@ -81,28 +81,75 @@ namespace Edutopia.Controllers
                 });
             }
 
-            // Check the current status using the video ID
-            var currentStatus = await _videoStatusService.GetVideoStatusAsync(id.ToString());
-
-            // Update video status in database if it has changed
-            if (currentStatus.Status != video.Status)
+            try
             {
-                video.Status = currentStatus.Status;
-                if (currentStatus.Status == "completed")
+                // Check the current status using the video ID
+                var currentStatus = await _videoStatusService.GetVideoStatusAsync(id.ToString());
+                
+                // Print detailed response data
+                Console.WriteLine("\n=== Response Data Before Database Update ===");
+                Console.WriteLine($"Video ID: {id}");
+                Console.WriteLine($"Current Video Status in DB: {video.Status}");
+                Console.WriteLine($"Current Video DiagramCount in DB: {video.DiagramCount}");
+                Console.WriteLine("\nAPI Response:");
+                Console.WriteLine($"Status: {currentStatus.Status}");
+                Console.WriteLine($"Message: {currentStatus.Message}");
+                Console.WriteLine($"SessionId: {currentStatus.SessionId}");
+                Console.WriteLine($"ObjectCount: {currentStatus.ObjectCount}");
+                Console.WriteLine($"DetectedObjects Count: {(currentStatus.DetectedObjects as object[])?.Length ?? 0}");
+                if (currentStatus.DetectedObjects != null)
                 {
-                    video.DiagramCount = currentStatus.ObjectCount;
+                    Console.WriteLine("\nDetected Objects:");
+                    foreach (var obj in currentStatus.DetectedObjects)
+                    {
+                        Console.WriteLine($"- {obj}");
+                    }
                 }
-                await _dbContext.SaveChangesAsync();
-            }
+                Console.WriteLine("==========================================\n");
 
-            return Ok(new
+                // Update video status in database if it has changed and is not null
+                if (currentStatus.Status != null && currentStatus.Status != video.Status)
+                {
+                    Console.WriteLine("\n=== Updating Database ===");
+                    Console.WriteLine($"Old Status: {video.Status}");
+                    Console.WriteLine($"New Status: {currentStatus.Status}");
+                    Console.WriteLine($"Old DiagramCount: {video.DiagramCount}");
+                    Console.WriteLine($"New DiagramCount: {currentStatus.ObjectCount}");
+                    Console.WriteLine("========================\n");
+
+                    video.Status = currentStatus.Status;
+                    if (currentStatus.Status == "completed")
+                    {
+                        video.DiagramCount = currentStatus.ObjectCount;
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                return Ok(new
+                {
+                    videoId = id,
+                    status = currentStatus.Status ?? video.Status,
+                    message = currentStatus.Message,
+                    detectedObjects = currentStatus.DetectedObjects,
+                    objectCount = currentStatus.ObjectCount
+                });
+            }
+            catch (Exception ex)
             {
-                videoId = id,
-                status = currentStatus.Status,
-                message = currentStatus.Message,
-                detectedObjects = currentStatus.DetectedObjects,
-                objectCount = currentStatus.ObjectCount
-            });
+                Console.WriteLine($"\n=== Error in CheckVideoStatus ===");
+                Console.WriteLine($"Exception: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                Console.WriteLine("===============================\n");
+
+                return Ok(new
+                {
+                    videoId = id,
+                    status = "Error",
+                    message = $"Error checking video status: {ex.Message}",
+                    detectedObjects = new List<object>(),
+                    objectCount = 0
+                });
+            }
         }
 
         [HttpGet("user")]

@@ -8,7 +8,7 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "dto",
+        "Name": "request",
         "Type": "Edutopia.Models.DTOs.CreateDTO.ForgotPasswordDTO",
         "IsRequired": true
       }
@@ -56,11 +56,90 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "model",
+        "Name": "request",
         "Type": "Edutopia.Models.DTOs.CreateDTO.ResetPasswordDTO",
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Edutopia.Controllers.DocumentController",
+    "Method": "UploadDocument",
+    "RelativePath": "api/documents/upload",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Title",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "File",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Edutopia.Controllers.VideoController",
+    "Method": "GetVideo",
+    "RelativePath": "api/videos/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Edutopia.Controllers.VideoController",
+    "Method": "CheckVideoStatus",
+    "RelativePath": "api/videos/{id}/status",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Edutopia.Controllers.VideoController",
+    "Method": "UploadVideo",
+    "RelativePath": "api/videos/upload",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "Edutopia.Models.DTOs.UploadDTO.VideoUploadDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Edutopia.Controllers.VideoController",
+    "Method": "GetUserVideos",
+    "RelativePath": "api/videos/user",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   }
 ]
