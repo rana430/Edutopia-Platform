@@ -8,6 +8,8 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Edutopia.Services;
+using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Edutopia.Controllers
 {
@@ -16,11 +18,16 @@ namespace Edutopia.Controllers
     public class VideoController : ControllerBase
     {
         private readonly VideoService _videoService;
+        private readonly VideoStatusService _videoStatusService;
         private readonly ApplicationDBContext _dbContext;
 
-        public VideoController(VideoService videoService, ApplicationDBContext dbContext)
+        public VideoController(
+            VideoService videoService, 
+            VideoStatusService videoStatusService,
+            ApplicationDBContext dbContext)
         {
             _videoService = videoService;
+            _videoStatusService = videoStatusService;
             _dbContext = dbContext;
         }
 
@@ -52,6 +59,50 @@ namespace Edutopia.Controllers
                 return NotFound(new { message = "Video not found" });
 
             return Ok(video);
+        }
+
+        [HttpGet("{id}/status")]
+        public async Task<IActionResult> CheckVideoStatus(Guid id)
+        {
+            var video = await _dbContext.Videos.FindAsync(id);
+            if (video == null)
+                return NotFound(new { message = "Video not found" });
+
+            // If the status is Error, return the error message directly
+            if (video.Status == "Error")
+            {
+                return Ok(new
+                {
+                    videoId = id,
+                    status = "Error",
+                    message = video.Response,
+                    detectedObjects = new List<object>(),
+                    objectCount = 0
+                });
+            }
+
+            // Check the current status using the video ID
+            var currentStatus = await _videoStatusService.GetVideoStatusAsync(id.ToString());
+
+            // Update video status in database if it has changed
+            if (currentStatus.Status != video.Status)
+            {
+                video.Status = currentStatus.Status;
+                if (currentStatus.Status == "completed")
+                {
+                    video.DiagramCount = currentStatus.ObjectCount;
+                }
+                await _dbContext.SaveChangesAsync();
+            }
+
+            return Ok(new
+            {
+                videoId = id,
+                status = currentStatus.Status,
+                message = currentStatus.Message,
+                detectedObjects = currentStatus.DetectedObjects,
+                objectCount = currentStatus.ObjectCount
+            });
         }
 
         [HttpGet("user")]

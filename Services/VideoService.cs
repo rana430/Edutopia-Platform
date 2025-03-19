@@ -15,14 +15,20 @@ namespace Edutopia.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly AuthService _authService;
         private readonly HttpClient _httpClient;
+        private readonly VideoStatusService _videoStatusService;
         private readonly string _transcriptApiUrl = "http://localhost:5001/process_video";
-        private readonly string _objectDetectionApiUrl = "http://localhost:5002/detect_objects";
+        private readonly string _objectDetectionApiUrl = "http://localhost:5002/process_video";
 
-        public VideoService(IServiceScopeFactory scopeFactory, AuthService authService, IHttpClientFactory httpClientFactory)
+        public VideoService(
+            IServiceScopeFactory scopeFactory, 
+            AuthService authService, 
+            IHttpClientFactory httpClientFactory,
+            VideoStatusService videoStatusService)
         {
             _scopeFactory = scopeFactory;
             _authService = authService;
             _httpClient = httpClientFactory.CreateClient();
+            _videoStatusService = videoStatusService;
         }
 
         public async Task<(bool Success, string Message, Guid VideoId)> UploadVideoAsync(VideoUploadDTO model, HttpRequest request)
@@ -71,72 +77,23 @@ namespace Edutopia.Services
 
             try
             {
-                var requestData = new { video_url = videoUrl };
-                var content = new StringContent(
-                    JsonSerializer.Serialize(requestData),
-                    Encoding.UTF8,
-                    "application/json"
-                );
+                // Process transcript
+                //var transcriptResult = await ProcessTranscriptAsync(videoUrl);
+                
+                // Process diagrams
+                var diagramResult = await ProcessDiagramsAsync(videoUrl, videoId);
 
-                Console.WriteLine($"Sending request to transcript API: {_transcriptApiUrl}");
-                
-                var transcriptResponse = await _httpClient.PostAsync(_transcriptApiUrl, content);
-                var responseContent = await transcriptResponse.Content.ReadAsStringAsync();
-                Console.WriteLine($"Response status: {transcriptResponse.StatusCode}");
-                Console.WriteLine($"Response content: {responseContent}");
-                
-                transcriptResponse.EnsureSuccessStatusCode();
-                
-                Console.WriteLine("Attempting to deserialize response...");
-                var transcriptResult = await JsonSerializer.DeserializeAsync<TranscriptResponse>(
-                    await transcriptResponse.Content.ReadAsStreamAsync());
-                Console.WriteLine($"Deserialized response - Success: {transcriptResult?.Success}, Analysis present: {transcriptResult?.Analysis != null}");
-                
-                if (transcriptResult?.Analysis == null)
-                {
-                    Console.WriteLine("Warning: Analysis is null in the response");
-                    // Try parsing the raw response to see what we got
-                    var rawResponse = JsonDocument.Parse(responseContent);
-                    Console.WriteLine($"Raw response structure: {JsonSerializer.Serialize(rawResponse, new JsonSerializerOptions { WriteIndented = true })}");
-                }
-
-                Console.WriteLine("Video processing successful");
                 var video = await dbContext.Videos.FindAsync(videoId);
                 if (video != null)
                 {
-                    video.Response = responseContent;
                     video.Status = "Completed";
-                    await dbContext.SaveChangesAsync();
-                }
-            }
-            catch (HttpRequestException ex)
-            {
-                Console.WriteLine($"HTTP Request Error: {ex.Message}");
-                Console.WriteLine($"Inner Exception: {ex.InnerException?.Message}");
-                
-                var video = await dbContext.Videos.FindAsync(videoId);
-                if (video != null)
-                {
-                    video.Status = "Error";
-                    video.Response = $"HTTP Request Error: {ex.Message}. Inner Exception: {ex.InnerException?.Message}";
-                    await dbContext.SaveChangesAsync();
-                }
-            }
-            catch (JsonException ex)
-            {
-                Console.WriteLine($"JSON Parsing Error: {ex.Message}");
-                
-                var video = await dbContext.Videos.FindAsync(videoId);
-                if (video != null)
-                {
-                    video.Status = "Error";
-                    video.Response = $"JSON Parsing Error: {ex.Message}";
+                    video.DiagramCount = diagramResult.ObjectCount;
                     await dbContext.SaveChangesAsync();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"General Error: {ex.Message}");
+                Console.WriteLine($"Error processing video: {ex.Message}");
                 Console.WriteLine($"Stack Trace: {ex.StackTrace}");
                 
                 var video = await dbContext.Videos.FindAsync(videoId);
@@ -148,6 +105,91 @@ namespace Edutopia.Services
                 }
             }
         }
+
+        private async Task<TranscriptResponse> ProcessTranscriptAsync(string videoUrl)
+        {
+            var requestData = new { video_url = videoUrl };
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestData),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await _httpClient.PostAsync(_transcriptApiUrl, content);
+            response.EnsureSuccessStatusCode();
+            
+            return await JsonSerializer.DeserializeAsync<TranscriptResponse>(
+                await response.Content.ReadAsStreamAsync());
+        }
+
+        private async Task<VideoStatusResponse> ProcessDiagramsAsync(string videoUrl, Guid videoId)
+        {
+            try
+            {
+                // Start diagram processing
+                var requestData = new { video_url = videoUrl };
+                var content = new StringContent(
+                    JsonSerializer.Serialize(requestData),
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+                Console.WriteLine($"Sending request to {_objectDetectionApiUrl}");
+                Console.WriteLine($"Request data: {JsonSerializer.Serialize(requestData)}");
+
+                try
+                {
+                    var response = await _httpClient.PostAsync(_objectDetectionApiUrl, content);
+                    Console.WriteLine($"Response status code: {response.StatusCode}");
+                    
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Raw response content: {responseContent}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"API returned status code {response.StatusCode}: {responseContent}");
+                    }
+
+                    var startResult = JsonSerializer.Deserialize<DiagramStartResponse>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (startResult == null)
+                    {
+                        throw new Exception($"Failed to deserialize API response. Response content: {responseContent}");
+                    }
+
+                    if (!startResult.Success)
+                    {
+                        throw new Exception($"Failed to start diagram processing: {startResult.Message}");
+                    }
+
+                    Console.WriteLine($"Successfully started processing with video ID: {videoId}");
+
+                    // Poll for results using the VideoStatusService
+                    var statusResponse = await _videoStatusService.PollVideoStatusAsync(videoId.ToString());
+                    statusResponse.SessionId = videoId.ToString(); // Use video ID as session ID
+                    return statusResponse;
+                }
+                catch (HttpRequestException ex)
+                {
+                    Console.WriteLine($"HTTP Request failed: {ex.Message}");
+                    Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+                    throw new Exception($"Failed to connect to API: {ex.Message}", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ProcessDiagramsAsync: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
+        }
     }
 
     public class TranscriptResponse
@@ -156,25 +198,10 @@ namespace Edutopia.Services
         public string Analysis { get; set; }
     }
 
-    public class RelevantSection
-    {
-        public string Content { get; set; }
-        public double RelevanceScore { get; set; }
-    }
-
-    public class ObjectDetectionResponse
+    public class DiagramStartResponse
     {
         public bool Success { get; set; }
         public string Message { get; set; }
-        public List<DetectedObject> DetectedObjects { get; set; }
-        public int ObjectCount { get; set; }
-    }
-
-    public class DetectedObject
-    {
-        public string ClassName { get; set; }
-        public double Confidence { get; set; }
-        public string Resolution { get; set; }
-        public string FilePath { get; set; }
+        public string SessionId { get; set; }
     }
 } 

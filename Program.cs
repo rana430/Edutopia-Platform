@@ -34,6 +34,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DocumentService>();
 builder.Services.AddScoped<VideoService>();
+builder.Services.AddScoped<VideoStatusService>();
 //builder.Services.AddSingleton<IWebHostEnvironment>(sp => sp.GetRequiredService<IWebHostEnvironment>());
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer(); // Required for minimal APIs

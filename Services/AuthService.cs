@@ -119,7 +119,7 @@ namespace Edutopia.Services
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()) // Store user ID in the token
             }),
-                Expires = DateTime.UtcNow.AddMinutes(15), // Token expires in 15 minutes
+                Expires = DateTime.UtcNow.AddHours(24),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
