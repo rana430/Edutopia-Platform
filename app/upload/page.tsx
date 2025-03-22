@@ -91,6 +91,11 @@ export default function UploadPage() {
       console.log("Response Status:", response.status);
       const responseBody = await response.json();
       console.log("Response Body:", responseBody);
+
+      // add video id to local storage
+      const videoId = responseBody.videoId;
+      console.log("Video ID:", videoId);
+      localStorage.setItem("videoId", videoId);
   
       if (!response.ok) {
         throw new Error(responseBody.message || "Upload failed.");
