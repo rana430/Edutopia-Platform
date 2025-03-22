@@ -4,11 +4,14 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/sidebar";
 import PageIllustration from "@/components/page-illustration";
+import { s } from "framer-motion/dist/types.d-6pKw1mTI";
 
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [videoLink, setVideoLink] = useState("");
+  const [videoUrl, setVideoURL] = useState("");
   const [uploadType, setUploadType] = useState<"file" | "link">("file");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -31,17 +34,78 @@ export default function UploadPage() {
   };
 
   const handleLinkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setVideoLink(event.target.value);
+    setVideoURL(event.target.value);
   };
 
-  const handleUpload = () => {
-    if (uploadType === "file") {
-      alert(selectedFile ? `Uploading file: ${selectedFile.name}` : "No file selected.");
-    } else {
-      const isValidUrl = videoLink.startsWith("http") || videoLink.startsWith("www");
-      alert(isValidUrl ? `Uploading video link: ${videoLink}` : "Invalid video link.");
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true); // Prevent multiple submissions
+    setErrorMessage(""); // Reset error message
+  
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in to upload videos.");
+      setLoading(false);
+      return;
+    }
+  
+    try {
+      let response;
+      if (uploadType === "file") {
+        if (!selectedFile) {
+          alert("No file selected.");
+          setLoading(false);
+          return;
+        }
+  
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+  
+        response = await fetch("http://localhost:5218/api/videos/upload", {
+          method: "POST",
+          headers: {
+            "Token": token,
+          },
+          body: formData, // ✅ Use FormData for files
+        });
+  
+      } else if (uploadType === "link") {
+        if (!videoUrl.startsWith("http")) {
+          alert("Invalid video link.");
+          setLoading(false);
+          return;
+        }
+  
+        // TODO: (Rana) use the global API_URL variable
+        response = await fetch("http://localhost:5218/api/videos/upload", {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+            "Token": token,
+          },
+          body: JSON.stringify({ videoUrl }),
+        });
+      }
+  
+      console.log("Response Status:", response.status);
+      const responseBody = await response.json();
+      console.log("Response Body:", responseBody);
+  
+      if (!response.ok) {
+        throw new Error(responseBody.message || "Upload failed.");
+      }
+  
+      alert("Upload successful!");
+  
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      setErrorMessage(error.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
     }
   };
+  
 
   return (
     <div className="flex h-screen relative">
@@ -136,7 +200,7 @@ export default function UploadPage() {
                   <input
                     type="url"
                     placeholder="Paste your video link here..."
-                    value={videoLink}
+                    value={videoUrl}
                     onChange={handleLinkChange}
                     className="form-input w-full bg-gray-800 text-white border border-indigo-500 rounded-lg focus:ring-2 focus:ring-indigo-400 placeholder-gray-300"
                   />

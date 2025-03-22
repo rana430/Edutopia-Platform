@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-const API_URL = process.env.NEXT_PUBLIC_API_URL ;
+const API_URL = "http://localhost:5218/api";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -50,13 +50,23 @@ export default function SignIn() {
       });
 
       const data = await response.json();
+      console.log(response.headers.getSetCookie());
+
       if (response.ok) {
-        localStorage.setItem("token", data.token); // Store token securely (consider HTTP-only cookies)
+        const token = response.headers.get("Token") || response.headers.get("token");
+      if (token) {
+        localStorage.setItem("token", token);
+        console.log("Token stored:", token);
         router.push("/upload"); // Redirect on success
+      } else {
+        console.log("No token found in response headers");
+      }
+        
       } else {
         setErrorMessage(data.message || "Invalid credentials");
       }
     } catch (error) {
+      console.error("Sign in failed:", error);
       setErrorMessage("Something went wrong. Please try again.");
     }
 
