@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "SmHZFaBwC6hwX79AxOXnYAHo5BNxxB9BkLtLOCmpLg7loQfONGFqiJRmj0GOfE5VTcR0f1J7qECLjgzGHpntaQ==",
+  "dgSpecHash": "7Ev+hY0u8ZJQ8FO58hvYOKNRu03M8/OOL+e7peHF74VHMaJWhcaDyd/kkWkcXvCUBDH2EwQRYZFm+kOe77cMBA==",
   "success": true,
-  "projectFilePath": "C:\\Users\\LENOVO\\Source\\Repos\\Edutopia-BackendNNN\\Edutopia.csproj",
+  "projectFilePath": "C:\\Users\\LENOVO\\source\\repos\\Edutopia-BackendNNN\\Edutopia.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\LENOVO\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\LENOVO\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",

@@ -14,5 +14,6 @@ namespace Edutopia.Data
         public DbSet<Document> Documents { get; set; }
         public DbSet<Diagram> Diagrams { get; set; }
         public DbSet<Video> Videos { get; set; }
-    }
+		public DbSet<History> History { get; set; }
+	}
 }

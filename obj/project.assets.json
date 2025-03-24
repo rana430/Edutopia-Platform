@@ -4980,11 +4980,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\LENOVO\\Source\\Repos\\Edutopia-BackendNNN\\Edutopia.csproj",
+      "projectUniqueName": "C:\\Users\\LENOVO\\source\\repos\\Edutopia-BackendNNN\\Edutopia.csproj",
       "projectName": "Edutopia",
-      "projectPath": "C:\\Users\\LENOVO\\Source\\Repos\\Edutopia-BackendNNN\\Edutopia.csproj",
+      "projectPath": "C:\\Users\\LENOVO\\source\\repos\\Edutopia-BackendNNN\\Edutopia.csproj",
       "packagesPath": "C:\\Users\\LENOVO\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\LENOVO\\Source\\Repos\\Edutopia-BackendNNN\\obj\\",
+      "outputPath": "C:\\Users\\LENOVO\\source\\repos\\Edutopia-BackendNNN\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\LENOVO\\AppData\\Roaming\\NuGet\\NuGet.Config",
