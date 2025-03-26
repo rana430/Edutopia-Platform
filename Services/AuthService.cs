@@ -59,7 +59,9 @@ namespace Edutopia.Services
             var token = GenerateResetToken(user);
 
             // Set token in response header
+            response.Headers["Access-Control-Expose-Headers"] = "Token";
             response.Headers["Token"] = token;
+
             return "User Logged in Successfully";
         }
 

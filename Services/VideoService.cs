@@ -78,8 +78,8 @@ namespace Edutopia.Services
             try
             {
                 // Process transcript
-                //var transcriptResult = await ProcessTranscriptAsync(videoUrl);
-                
+                var transcriptResult = await ProcessTranscriptAsync(videoUrl);
+
                 // Process diagrams
                 var diagramResult = await ProcessDiagramsAsync(videoUrl, videoId);
 
