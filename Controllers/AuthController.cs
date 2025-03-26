@@ -32,7 +32,7 @@ namespace Edutopia.Controllers
             if (token == null)
                 return Unauthorized("Invalid credentials.");
 
-            return Ok(new { Token = token });
+            return Ok(new { Message = token });
         }
 
         /// <summary>
