@@ -5,12 +5,20 @@ namespace Edutopia.Models.Entities.Extensions
 {
 	public static class SessionExtensions
 	{
-		public static SesseionResponseDTO ToResponse(this History current)
-		{
+        public static SesseionResponseDTO ToResponse(this History current)
+        {
+            return new SesseionResponseDTO
+            {
+                Id = current.Id,
+                document = current.Document,
+                video = current.Video,
+                usr_msgs = current.User_Message,
+                ai_response = current.response,
+                summrizedtxt = (current.Video?.Response?.Length > 2)
+                                ? current.Video.Response
+                                : (current.Document?.Response ?? string.Empty) // Ensure a default value if both are null
+            };
+        }
 
-
-			return new SesseionResponseDTO { document = current.Document ?? null, video = current.Video ?? null, Id = current.Id, usr_msgs = current.User_Message, ai_response = current.response,summrizedtxt=current.Video.Response.Length>2 ? current.Video.Response: current.Document.Response };
-		}
-
-	}
+    }
 }

@@ -79,3 +79,17 @@ AI/
     │   └── colab_pretrained_aug.pt
     └── __init__.py
 ``` 
+
+To buid
+// move to folder 
+- cd AI
+- python -m venv venv
+>>
+>> # Activate it
+>> .\venv\Scripts\activate
+
+pip install -r requirements.txt
+pip install ultralytics
+pip install flask python-dotenv opencv-python ultralytics yt-dlp moviepy torch torchvision
+cd video_detection    
+python api.py

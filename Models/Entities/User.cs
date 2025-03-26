@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 using Edutopia.Utilities;
 
 namespace Edutopia.Models.Entities
@@ -15,7 +16,9 @@ namespace Edutopia.Models.Entities
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime LastLoginAt { get; set; }
-		public virtual ICollection<History> Histories { get; set; }
+
+        [JsonIgnore]
+        public virtual ICollection<History> Histories { get; set; }
 
 
 		/// <summary>

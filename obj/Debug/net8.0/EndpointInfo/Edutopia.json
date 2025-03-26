@@ -318,13 +318,6 @@
             "minLength": 1,
             "type": "string"
           },
-          "histories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/History"
-            },
-            "nullable": true
-          },
           "number": {
             "type": "integer",
             "format": "int32",
@@ -342,51 +335,6 @@
           "email": {
             "type": "string",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "History": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "documentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "videoId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "user_Message": {
-            "type": "string",
-            "nullable": true
-          },
-          "response": {
-            "type": "string",
-            "nullable": true
-          },
-          "created": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "document": {
-            "$ref": "#/components/schemas/Document"
-          },
-          "user": {
-            "$ref": "#/components/schemas/User"
-          },
-          "video": {
-            "$ref": "#/components/schemas/Video"
           }
         },
         "additionalProperties": false
@@ -462,47 +410,6 @@
         },
         "additionalProperties": false
       },
-      "User": {
-        "required": [
-          "email",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "passwordHash": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "lastLoginAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "histories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/History"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "Video": {
         "required": [
           "historyId",
@@ -540,13 +447,6 @@
           "diagramCount": {
             "type": "integer",
             "format": "int32"
-          },
-          "histories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/History"
-            },
-            "nullable": true
           }
         },
         "additionalProperties": false

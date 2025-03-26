@@ -2,6 +2,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 public class Document
 {
@@ -31,6 +32,8 @@ public class Document
     [Required]
     [MaxLength(50)]
     public string Status { get; set; } = "Processing";
+
+    [JsonIgnore]
     public ICollection<History> Histories { get; set;}
 
     public int? number {  get; set; }

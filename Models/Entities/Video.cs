@@ -2,6 +2,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 public class Video
 {
@@ -24,7 +25,8 @@ public class Video
 
     public int DiagramCount { get; set; }
 
-public ICollection<History> Histories { get; set; }
+    [JsonIgnore]
+    public ICollection<History> Histories { get; set; }
 
 }
 

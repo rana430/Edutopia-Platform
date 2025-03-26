@@ -69,6 +69,7 @@ namespace Edutopia.Services
             }
         }
 
+
         private async Task ProcessVideoAsync(Guid videoId, string videoUrl)
         {
             using var scope = _scopeFactory.CreateScope();
@@ -77,7 +78,7 @@ namespace Edutopia.Services
             try
             {
                 // Process transcript
-                //var transcriptResult = await ProcessTranscriptAsync(videoUrl);
+                //var summerizationResult = await ProcessSummerizationAsync(videoUrl, videoId);
 
                 // Process diagrams
                 var diagramResult = await ProcessDiagramsAsync(videoUrl, videoId);
@@ -105,21 +106,80 @@ namespace Edutopia.Services
             }
         }
 
-        private async Task<TranscriptResponse> ProcessTranscriptAsync(string videoUrl)
+        private async Task<SummerizationResponse> ProcessSummerizationAsync(string videoUrl, Guid videoId)
         {
-            var requestData = new { video_url = videoUrl };
-            var content = new StringContent(
-                JsonSerializer.Serialize(requestData),
-                Encoding.UTF8,
-                "application/json"
-            );
+            try
+            {
+                var requestData = new
+                {
+                    video_url = videoUrl,
+                    session_id = videoId.ToString()  // Send the video ID as session ID
+                };
+                var content = new StringContent(
+                    JsonSerializer.Serialize(requestData),
+                    Encoding.UTF8,
+                    "application/json"
+                );
 
-            var response = await _httpClient.PostAsync(_transcriptApiUrl, content);
-            response.EnsureSuccessStatusCode();
+                Console.WriteLine($"Sending request to {_transcriptApiUrl}");
+                Console.WriteLine($"Request data: {JsonSerializer.Serialize(requestData)}");
 
-            return await JsonSerializer.DeserializeAsync<TranscriptResponse>(
-                await response.Content.ReadAsStreamAsync());
+                try
+                {
+                    var response = await _httpClient.PostAsync(_transcriptApiUrl, content);
+                    Console.WriteLine($"Response status code: {response.StatusCode}");
+
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Raw response content: {responseContent}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"API returned status code {response.StatusCode}: {responseContent}");
+                    }
+
+                    var startResult = JsonSerializer.Deserialize<SummerizationResponse>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (startResult == null)
+                    {
+                        throw new Exception($"Failed to deserialize API response. Response content: {responseContent}");
+                    }
+
+                    if (!startResult.Success)
+                    {
+                        throw new Exception($"Failed to start summarization processing: {startResult.Message}");
+                    }
+
+                    Console.WriteLine($"Successfully started processing summarization with video ID: {videoId}");
+
+                    return new SummerizationResponse
+                    {
+                        Success = startResult.Success,
+                        Message = startResult.Message,
+                        SessionId = startResult.SessionId
+                    };
+                }
+                catch (HttpRequestException ex)
+                {
+                    Console.WriteLine($"HTTP Request failed: {ex.Message}");
+                    Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+                    throw new Exception($"Failed to connect to API: {ex.Message}", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ProcessSummerizationAsync: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
+
 
         private async Task<VideoStatusResponse> ProcessDiagramsAsync(string videoUrl, Guid videoId)
         {
@@ -204,10 +264,11 @@ namespace Edutopia.Services
         }
     }
 
-    public class TranscriptResponse
+    public class SummerizationResponse
     {
         public bool Success { get; set; }
-        public string Analysis { get; set; }
+        public string Message { get; set; }
+        public string SessionId { get; set; }
     }
 
     public class DiagramStartResponse
