@@ -33,5 +33,5 @@ public class Document
     public string Status { get; set; } = "Processing";
     public ICollection<History> Histories { get; set;}
 
-
+    public int? number {  get; set; }
 }

@@ -9,6 +9,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Edutopia.Services;
 using Edutopia.Services.Interfaces;
+using Edutopia.Models.DTOs.Session;
 
 namespace Edutopia.Controllers
 {
@@ -33,15 +34,15 @@ namespace Edutopia.Controllers
 		}
 
 		[HttpPost("video")]
-		public async Task<IActionResult> UploadVideo([FromBody] VideoUploadDTO model)
+		public async Task<SesseionResponseDTO> UploadVideo([FromBody] VideoUploadDTO model)
 		{
 			var result = await _videoService.UploadVideoAsync(model, Request);
 			if (!result.Success)
-				return BadRequest(new { message = result.Message });
+				return null;
 
-			var sessionResponse=  _sessionService.CreateVideoSession(result.VideoId);
+			var sessionResponse=  await _sessionService.CreateVideoSession(result.VideoId, Request);
 
-			return Ok(sessionResponse);
+			return sessionResponse;
 		}
 
 		[HttpPost("document")]
@@ -52,7 +53,7 @@ namespace Edutopia.Controllers
 				return BadRequest(new { message = result.Message });
 
 
-			var sessionResponse = _sessionService.CreateDocSession(result.DocumentId);
+			var sessionResponse = _sessionService.CreateDocSession(result.DocumentId, Request);
 
 			return Ok(sessionResponse);
 		}

@@ -7,9 +7,9 @@ namespace Edutopia.Models.Entities
 	{
 
 		public Guid Id { get; set; }
-		public Guid DocumentId { get; set; }
+		public Guid? DocumentId { get; set; }
 		public Guid UserId { get; set; }
-		public Guid VideoId { get; set; }
+		public Guid? VideoId { get; set; }
 		public string? User_Message { get; set; }
 		public string? response { get; set; }
 		public DateTime Created { get; set; }

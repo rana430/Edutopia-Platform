@@ -1,4 +1,5 @@
-﻿using Edutopia.Data;
+﻿using Azure.Core;
+using Edutopia.Data;
 using Edutopia.Models.DTOs.Session;
 using Edutopia.Models.Entities;
 using Edutopia.Models.Entities.Extensions;
@@ -17,29 +18,43 @@ namespace Edutopia.Services
 	{
 		private readonly ApplicationDBContext _db;
 		private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly AuthService _authService;
+        private readonly ApplicationDBContext _dbContext;
 
 
 
-		public SessionService(ApplicationDBContext db, IHttpContextAccessor httpContextAccessor) 
+        public SessionService(ApplicationDBContext db, IHttpContextAccessor httpContextAccessor, AuthService authService, ApplicationDBContext applicationDBContext) 
 		{
 			_httpContextAccessor = httpContextAccessor;
 			_db = db;
+            _authService = authService;
+            _dbContext = applicationDBContext;
 		}
 
-		public async Task<SesseionResponseDTO> CreateDocSession(Guid documentID)
+		public async Task<SesseionResponseDTO> CreateDocSession(Guid documentID, HttpRequest request)
 		{
 
-			var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-			if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var currentUserId))
-				throw new UnauthorizedAccessException("User not authenticated");
-			var document = _db.Documents.Where(x => x.Id == documentID).FirstOrDefault();
+            if (!request.Headers.TryGetValue("Token", out var token))
+                return null;
+
+            var claims = _authService.ValidateResetToken(token);
+            if (claims == null)
+                return null;
+
+            var userId = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = _dbContext.Users.FirstOrDefault(u => u.Id.ToString() == userId);
+
+            if (user == null)
+                return null;
+
+            var document = _db.Documents.Where(x => x.Id == documentID).FirstOrDefault();
 			
 			var session = new History()
 			{
 				Id = Guid.NewGuid(),
 				DocumentId = document.Id,
-				UserId = currentUserId
-			};
+				UserId = user.Id,
+            };
 			document.HistoryId = session.Id;
 			session.Document = document;
 			_db.Documents.Update(document);
@@ -49,30 +64,39 @@ namespace Edutopia.Services
 
 		}
 
-	
 
-		public async Task<SesseionResponseDTO> CreateVideoSession(Guid videoID)
+        public async Task<SesseionResponseDTO> CreateVideoSession(Guid videoID, HttpRequest request)
 		{
-			var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-			if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var currentUserId))
-				throw new UnauthorizedAccessException("User not authenticated");
+            if (!request.Headers.TryGetValue("Token", out var token))
+                return null;
 
-			var video = _db.Videos.Where(x => x.Id == videoID).FirstOrDefault();
+            var claims = _authService.ValidateResetToken(token);
+            if (claims == null)
+                return null;
+
+            var userId = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = _dbContext.Users.FirstOrDefault(u => u.Id.ToString() == userId);
+
+            if (user == null)
+                return null;
+
+            var video = _db.Videos.Where(x => x.Id == videoID).FirstOrDefault();
 			var session = new History()
 			{
 				Id = Guid.NewGuid(),
 				VideoId = video.Id,
-				UserId = currentUserId
+				UserId = user.Id,
 			};
 			video.HistoryId = session.Id;
 			session.Video = video;
-			_db.Videos.Update(video);
+            _db.Videos.Update(video);
 			await _db.History.AddAsync(session);
 			await _db.SaveChangesAsync();
 			return session.ToResponse();
 
 		}
-		public async Task<bool> DeleteSession(Guid id)
+
+        public async Task<bool> DeleteSession(Guid id)
 		{
 			// the corosponding file  didnt get deleted yet  ,,, QS
 			var session = await _db.History.FindAsync(id);
