@@ -6,13 +6,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 public class Document
 {
     [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; }
 
     [Required]
-    public Guid UserId { get; set; }
-
-    [ForeignKey(nameof(UserId))] // Move the attribute to the navigation property
-    public virtual User User { get; set; }
+    public Guid HistoryId { get; set; }
 
     [Required]
     [MaxLength(255)]
@@ -26,9 +23,15 @@ public class Document
     [MaxLength(100)]
     public string FileType { get; set; }
 
+	public string Response { get; set; } = "{}";
+	public string Summary { get; set; }  // AI-Generated Summary
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Required]
     [MaxLength(50)]
     public string Status { get; set; } = "Processing";
+    public ICollection<History> Histories { get; set;}
+
+    public int? number {  get; set; }
 }

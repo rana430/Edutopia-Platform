@@ -4,6 +4,7 @@ using Edutopia.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Edutopia.Migrations
 {
     [DbContext(typeof(ApplicationDBContext))]
-    partial class ApplicationDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250309224012_History")]
+    partial class History
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -62,9 +65,6 @@ namespace Edutopia.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<int?>("number")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.ToTable("Documents");
@@ -93,7 +93,7 @@ namespace Edutopia.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("DocumentId")
+                    b.Property<Guid>("DocumentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("UserId")
@@ -102,7 +102,7 @@ namespace Edutopia.Migrations
                     b.Property<string>("User_Message")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("VideoId")
+                    b.Property<Guid>("VideoId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("response")
@@ -157,9 +157,6 @@ namespace Edutopia.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("DiagramCount")
-                        .HasColumnType("int");
-
                     b.Property<Guid>("HistoryId")
                         .HasColumnType("uniqueidentifier");
 
@@ -186,7 +183,9 @@ namespace Edutopia.Migrations
                 {
                     b.HasOne("Document", "Document")
                         .WithMany("Histories")
-                        .HasForeignKey("DocumentId");
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Edutopia.Models.Entities.User", "User")
                         .WithMany("Histories")
@@ -196,7 +195,9 @@ namespace Edutopia.Migrations
 
                     b.HasOne("Video", "Video")
                         .WithMany("Histories")
-                        .HasForeignKey("VideoId");
+                        .HasForeignKey("VideoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Document");
 

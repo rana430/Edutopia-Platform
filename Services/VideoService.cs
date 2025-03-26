@@ -20,8 +20,8 @@ namespace Edutopia.Services
         private readonly string _objectDetectionApiUrl = "http://localhost:5002/process_video";
 
         public VideoService(
-            IServiceScopeFactory scopeFactory, 
-            AuthService authService, 
+            IServiceScopeFactory scopeFactory,
+            AuthService authService,
             IHttpClientFactory httpClientFactory,
             VideoStatusService videoStatusService)
         {
@@ -46,7 +46,7 @@ namespace Edutopia.Services
             using (var scope = _scopeFactory.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDBContext>();
-                
+
                 var userId = claims.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 var user = dbContext.Users.FirstOrDefault(u => u.Id.ToString() == userId);
 
@@ -55,7 +55,6 @@ namespace Edutopia.Services
 
                 var video = new Video
                 {
-                    UserId = user.Id,
                     VideoUrl = model.VideoUrl,
                     Status = "Processing"
                 };
@@ -78,7 +77,7 @@ namespace Edutopia.Services
             try
             {
                 // Process transcript
-                var transcriptResult = await ProcessTranscriptAsync(videoUrl);
+                //var transcriptResult = await ProcessTranscriptAsync(videoUrl);
 
                 // Process diagrams
                 var diagramResult = await ProcessDiagramsAsync(videoUrl, videoId);
@@ -95,7 +94,7 @@ namespace Edutopia.Services
             {
                 Console.WriteLine($"Error processing video: {ex.Message}");
                 Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-                
+
                 var video = await dbContext.Videos.FindAsync(videoId);
                 if (video != null)
                 {
@@ -117,7 +116,7 @@ namespace Edutopia.Services
 
             var response = await _httpClient.PostAsync(_transcriptApiUrl, content);
             response.EnsureSuccessStatusCode();
-            
+
             return await JsonSerializer.DeserializeAsync<TranscriptResponse>(
                 await response.Content.ReadAsStreamAsync());
         }
@@ -127,7 +126,8 @@ namespace Edutopia.Services
             try
             {
                 // Start diagram processing
-                var requestData = new { 
+                var requestData = new
+                {
                     video_url = videoUrl,
                     session_id = videoId.ToString()  // Send the video ID as session ID
                 };
@@ -144,7 +144,7 @@ namespace Edutopia.Services
                 {
                     var response = await _httpClient.PostAsync(_objectDetectionApiUrl, content);
                     Console.WriteLine($"Response status code: {response.StatusCode}");
-                    
+
                     var responseContent = await response.Content.ReadAsStringAsync();
                     Console.WriteLine($"Raw response content: {responseContent}");
 
@@ -172,7 +172,7 @@ namespace Edutopia.Services
 
                     // Get the initial results from the Flask API
                     var statusResponse = await _videoStatusService.GetVideoStatusAsync(videoId.ToString());
-                    
+
                     // Return the response from the Flask API
                     return new VideoStatusResponse
                     {
@@ -216,4 +216,4 @@ namespace Edutopia.Services
         public string Message { get; set; }
         public string SessionId { get; set; }
     }
-} 
+}

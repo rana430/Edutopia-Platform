@@ -7,18 +7,14 @@ public class Video
 {
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
-    public Guid UserId { get; set; }
-
-    [ForeignKey(nameof(UserId))]
-    public virtual User User { get; set; }
+    public Guid HistoryId { get; set; }
 
     [Required]
     [MaxLength(500)]
     public string VideoUrl { get; set; }
 
-    public string Response { get; set; } = "";
+    public string Response { get; set; } = "{}";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -27,5 +23,8 @@ public class Video
     public string Status { get; set; } = "Processing";
 
     public int DiagramCount { get; set; }
+
+public ICollection<History> Histories { get; set; }
+
 }
 
