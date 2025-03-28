@@ -11,10 +11,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("7c88fbfd-164b-420a-8da0-d9744a1c1006")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("Edutopia")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d1a565836923ff7685a89ba916ed4817b4fb3756")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+558ffe75dd87b8aaba22e730d2e44357faf02d5a")]
 [assembly: System.Reflection.AssemblyProductAttribute("Edutopia")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Edutopia")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

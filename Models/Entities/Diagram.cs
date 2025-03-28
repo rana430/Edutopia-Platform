@@ -7,6 +7,9 @@ namespace Edutopia.Models.Entities
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public Guid DocumentId { get; set; }
+        public Guid HistoryId { get; set; }
+
+        [Required]
+        public string FilePath { get; set; }
     }
 }

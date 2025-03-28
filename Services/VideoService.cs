@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Edutopia.Models.Entities;
 
 namespace Edutopia.Services
 {
@@ -81,15 +82,28 @@ namespace Edutopia.Services
                 //var summerizationResult = await ProcessSummerizationAsync(videoUrl, videoId);
 
                 // Process diagrams
-                var diagramResult = await ProcessDiagramsAsync(videoUrl, videoId);
+                ProcessDiagramsAsync(videoUrl, videoId);
 
-                var video = await dbContext.Videos.FindAsync(videoId);
-                if (video != null)
-                {
-                    video.Status = "Completed";
-                    video.DiagramCount = diagramResult.ObjectCount;
-                    await dbContext.SaveChangesAsync();
-                }
+
+                //var video = await dbContext.Videos.FindAsync(videoId);
+                //if (video != null)
+                //{
+                //    video.Status = "Completed";
+                //    video.DiagramCount = diagramResult.ObjectCount;
+                //    //video.Response = summerizationResult.Message;
+
+                //    // create diagrams paths are in upload/detected_objects/userId
+                //    for (int i = 0; i < diagramResult.ObjectCount; i++)
+                //    {
+                //        var diagram = new Diagram
+                //        {
+                //            HistoryId = video.HistoryId,
+                //            FilePath = $"upload/detected_objects/{videoId}/object_{i + 1}.png"
+                //        };
+
+                //    }
+                //    await dbContext.SaveChangesAsync();
+                //}
             }
             catch (Exception ex)
             {
@@ -181,7 +195,7 @@ namespace Edutopia.Services
         }
 
 
-        private async Task<VideoStatusResponse> ProcessDiagramsAsync(string videoUrl, Guid videoId)
+        private async void ProcessDiagramsAsync(string videoUrl, Guid videoId)
         {
             try
             {
@@ -230,19 +244,23 @@ namespace Edutopia.Services
 
                     Console.WriteLine($"Successfully started processing with video ID: {videoId}");
 
-                    // Get the initial results from the Flask API
-                    var statusResponse = await _videoStatusService.GetVideoStatusAsync(videoId.ToString());
+                    Console.WriteLine(responseContent);
 
-                    // Return the response from the Flask API
-                    return new VideoStatusResponse
-                    {
-                        Success = startResult.Success,
-                        Status = statusResponse.Status,
-                        Message = startResult.Message,
-                        SessionId = startResult.SessionId,
-                        DetectedObjects = statusResponse.DetectedObjects,
-                        ObjectCount = statusResponse.ObjectCount
-                    };
+                    // Get the initial results from the Flask API
+                    //var statusResponse = await _videoStatusService.GetVideoStatusAsync(videoId);
+
+
+                    //// Return the response from the Flask API
+                    //return new VideoStatusResponse
+                    //{
+                    //    Success = startResult.Success,
+                    //    Status = statusResponse.Status,
+                    //    Message = startResult.Message,
+                    //    SessionId = startResult.SessionId,
+                    //    ObjectCount = statusResponse.ObjectCount,
+                    //    Summerization = statusResponse.Summerization,
+                    //};
+
                 }
                 catch (HttpRequestException ex)
                 {
@@ -269,6 +287,7 @@ namespace Edutopia.Services
         public bool Success { get; set; }
         public string Message { get; set; }
         public string SessionId { get; set; }
+        public string Summerization { get; set; }
     }
 
     public class DiagramStartResponse

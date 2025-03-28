@@ -5,7 +5,6 @@ namespace Edutopia.Models.Entities
 {
 	public class History
 	{
-
 		public Guid Id { get; set; }
 		public Guid? DocumentId { get; set; }
 		public Guid UserId { get; set; }
@@ -16,10 +15,6 @@ namespace Edutopia.Models.Entities
 		public Document? Document { get; set; }
 		public User User { get; set; }
 		public Video? Video { get; set; }
-
-
-
-
 	}
 }
 

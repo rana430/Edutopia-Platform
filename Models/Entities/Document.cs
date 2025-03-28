@@ -35,6 +35,4 @@ public class Document
 
     [JsonIgnore]
     public ICollection<History> Histories { get; set;}
-
-    public int? number {  get; set; }
 }
