@@ -265,7 +265,7 @@
         }
       }
     },
-    "/api/video/{id}/status": {
+    "/api/video/{id}/diagrams/status": {
       "get": {
         "tags": [
           "Video"
@@ -347,11 +347,7 @@
             "minLength": 1,
             "type": "string"
           },
-          "response": {
-            "type": "string",
-            "nullable": true
-          },
-          "summary": {
+          "summarization": {
             "type": "string",
             "nullable": true
           },
@@ -453,8 +449,10 @@
       },
       "Video": {
         "required": [
+          "diagramExtractionStatus",
           "historyId",
           "status",
+          "summerizationStatus",
           "videoUrl"
         ],
         "type": "object",
@@ -472,7 +470,12 @@
             "minLength": 1,
             "type": "string"
           },
-          "response": {
+          "status": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "summerization": {
             "type": "string",
             "nullable": true
           },
@@ -480,7 +483,12 @@
             "type": "string",
             "format": "date-time"
           },
-          "status": {
+          "diagramExtractionStatus": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "summerizationStatus": {
             "maxLength": 50,
             "minLength": 1,
             "type": "string"

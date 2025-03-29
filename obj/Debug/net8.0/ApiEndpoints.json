@@ -160,8 +160,8 @@
   },
   {
     "ContainingType": "Edutopia.Controllers.VideoController",
-    "Method": "CheckVideoStatus",
-    "RelativePath": "api/video/{id}/status",
+    "Method": "CheckVideoDiagramsStatus",
+    "RelativePath": "api/video/{id}/diagrams/status",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,

@@ -27,64 +27,21 @@ namespace Edutopia.Controllers
             _logger = logger;
         }
 
-        [HttpGet("{id}/status")]
-        public async Task<IActionResult> CheckVideoStatus(Guid id)
+        [HttpGet("{id}/diagrams/status")]
+        public async Task<IActionResult> CheckVideoDiagramsStatus(Guid id)
         {
-            var video = await _dbContext.Videos.FindAsync(id);
-            if (video == null)
-                return NotFound(new { message = "Video not found" });
-
             try
             {
                 // Fetch video status
-                var currentStatus = await _videoStatus.GetVideoStatusAsync(id);
+                var currentStatus = await _videoStatus.GetVideoDiagramsStatus(id);
 
-                // Check if the API returned valid data
-                if (currentStatus == null)
-                {
-                    return BadRequest(new { message = "Failed to retrieve video status from the AI model." });
-                }
-
-                // Validate HistoryId to prevent null reference exceptions
-                if (video.HistoryId == null)
-                {
-                    return BadRequest(new { message = "Video HistoryId is missing." });
-                }
-
-                // Update video object count
-                video.DiagramCount = currentStatus.ObjectCount;
 
                 _logger.LogInformation("Checking status for Video ID {VideoId}: {CurrentStatus}", id, currentStatus);
-
-                video.Status = currentStatus.Success ? "Completed" : "Failed";
-                // Ensure detected objects exist before saving
-                if (currentStatus.DetectedObjects != null && currentStatus.DetectedObjects.Length > 0)
-                {
-                    foreach (var detectedObject in currentStatus.DetectedObjects)
-                    {
-                        var diagram = new Diagram
-                        {
-                            FilePath = detectedObject.Path,
-                            HistoryId = video.HistoryId
-                        };
-
-                        _dbContext.Diagrams.Add(diagram);
-                    }
-
-                    // Save changes after processing all diagrams
-                    await _dbContext.SaveChangesAsync();
-                }
-                else
-                {
-                    Console.WriteLine("No detected objects to save.");
-                }
 
                 return Ok(new
                 {
                     videoId = id,
-                    status = video.Status,
-                    message = currentStatus.Message,
-                    objectCount = currentStatus.ObjectCount
+                    message = currentStatus.message
                 });
             }
             catch (Exception ex)
@@ -110,8 +67,6 @@ namespace Edutopia.Controllers
                 });
             }
         }
-
-
 
         [HttpGet("{id}/diagrams")]
         public async Task<IActionResult> GetDiagrams(Guid id)

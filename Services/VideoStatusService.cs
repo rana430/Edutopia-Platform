@@ -142,7 +142,78 @@ namespace Edutopia.Services
                 return new DetectedObject();
             }
         }
+        public async Task<DiagramResponse> GetVideoDiagramsStatus(Guid videoId)
+        {
+            try
+            {
+                var video = await _applicationDBContext.Videos.FindAsync(videoId);
+                if (video == null)
+                {
+                    return new DiagramResponse { message = "No Video for this ID exists" };
+                }
 
+                var url = $"{_baseUrl}/get_results/{videoId}";
+                _logger.LogInformation("Requesting video status from URL: {Url}", url);
+
+                var response = await _httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation("Full response received: {ResponseContent}", responseContent);
+
+                var videoStatus = DeserializeVideoStatus(responseContent);
+                if (videoStatus == null)
+                {
+                    video.DiagramExtractionStatus = "Error";
+                    _logger.LogError("Failed to deserialize video status.");
+                    return new DiagramResponse { message = "Error parsing response" };
+                }
+
+                ProcessAndSaveDiagrams(video, videoStatus.DetectedObjects);
+                return new DiagramResponse { message = "Diagrams returned" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting video status for Video ID {VideoId}", videoId);
+                return new DiagramResponse { message = "Error fetching diagrams" };
+            }
+        }
+
+        private VideoStatusResponse DeserializeVideoStatus(string json)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                return JsonSerializer.Deserialize<VideoStatusResponse>(json, options);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "JSON Deserialization Error. Raw Response: {Json}", json);
+                return null;
+            }
+        }
+
+        private void ProcessAndSaveDiagrams(Video video, DetectedObject[] detectedObjects)
+        {
+            if (detectedObjects == null || detectedObjects.Length == 0)
+            {
+                video.DiagramExtractionStatus = "Error";
+                _logger.LogWarning("No detected objects to save.");
+                return;
+            }
+
+            video.DiagramExtractionStatus = "Completed";
+            video.DiagramCount = detectedObjects.Length;
+
+            var diagrams = detectedObjects.Select(obj => new Diagram
+            {
+                FilePath = obj.Path,
+                HistoryId = video.HistoryId
+            }).ToList();
+
+            _applicationDBContext.Diagrams.AddRange(diagrams);
+            _applicationDBContext.SaveChanges();
+        }
 
 
         public async Task<List<Diagram>> GetVideoDiagrams(Guid videoId)
@@ -166,9 +237,15 @@ namespace Edutopia.Services
             }
         }
     }
-        public class DetectedObject
-        {
-            public string Filename { get; set; }
-            public string Path { get; set; }
-        }
+
+    public class DetectedObject
+    {
+        public string Filename { get; set; }
+        public string Path { get; set; }
+    }
+
+    public class DiagramResponse
+    {
+        public string message { get; set; }
+    }
 } 

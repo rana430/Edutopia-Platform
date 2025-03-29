@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Edutopia")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+558ffe75dd87b8aaba22e730d2e44357faf02d5a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+90b3217611580e61f057f9b23cc39c98129dbbe7")]
 [assembly: System.Reflection.AssemblyProductAttribute("Edutopia")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Edutopia")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
