@@ -12,7 +12,6 @@ namespace Edutopia.Controllers
 {
 	[Route("api/[controller]")]
 	[ApiController]
-	[Authorize()]
 	public class SessionController : ControllerBase
 	{
 
@@ -27,9 +26,9 @@ namespace Edutopia.Controllers
 			this.dBContext = dBContext;
 		}
 
-		[HttpGet("{id?}")]
-		
-		public async Task<IActionResult> GetSession(Guid id)
+        [HttpGet("{id}")]
+
+        public async Task<IActionResult> GetSession(Guid id)
 		{
 			var session = await _sessionService.GetSession(id);
 			

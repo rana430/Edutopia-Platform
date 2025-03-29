@@ -109,6 +109,7 @@ namespace Edutopia.Services
 
 			return true;
 		}
+
 		public async Task<SesseionResponseDTO> GetSession(Guid id)
 		{
 			var session = await _db.History.FindAsync(id);

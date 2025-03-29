@@ -19,7 +19,7 @@ namespace Edutopia.Services
         private readonly AuthService _authService;
         private readonly HttpClient _httpClient;
         private readonly VideoStatusService _videoStatusService;
-        private readonly string _transcriptApiUrl = "http://localhost:5001/process_video";
+        private readonly string _transcriptApiUrl = "http://localhost:5000/summarize";
         private readonly string _objectDetectionApiUrl = "http://localhost:5002/process_video";
 
         public VideoService(
@@ -72,6 +72,85 @@ namespace Edutopia.Services
             }
         }
 
+        private async Task ProcessSummerizationAsync(string videoUrl, Guid videoId)
+        {
+            try
+            {
+                var requestData = new
+                {
+                    video_url = videoUrl
+                };
+                var content = new StringContent(
+                    JsonSerializer.Serialize(requestData),
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+                Console.WriteLine($"Sending request to {_transcriptApiUrl}");
+                Console.WriteLine($"Request data: {JsonSerializer.Serialize(requestData)}");
+
+                try
+                {
+                    var response = await _httpClient.PostAsync(_transcriptApiUrl, content);
+                    Console.WriteLine($"Response status code: {response.StatusCode}");
+
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Raw response content: {responseContent}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"API returned status code {response.StatusCode}: {responseContent}");
+                    }
+
+                    var startResult = JsonSerializer.Deserialize<VideoStatusResponse>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (startResult == null)
+                    {
+                        throw new Exception($"Failed to deserialize API response. Response content: {responseContent}");
+                    }
+
+
+
+                    Console.WriteLine($"Successfully started processing summarization with video ID: {videoId}");
+
+                    using var scope = _scopeFactory.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDBContext>();
+
+                    var video = await dbContext.Videos.FindAsync(videoId);
+                    if (video != null)
+                    {
+                        using JsonDocument doc = JsonDocument.Parse(responseContent);
+                        string summary = doc.RootElement.GetProperty("summary").GetString();
+
+                        video.Summerization = summary;
+                        Console.WriteLine(summary);
+                        video.SummerizationStatus = "Complete";
+                        await dbContext.SaveChangesAsync();
+                    }
+
+                }
+                catch (HttpRequestException ex)
+                {
+                    Console.WriteLine($"HTTP Request failed: {ex.Message}");
+                    Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+                    throw new Exception($"Failed to connect to API: {ex.Message}", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ProcessSummerizationAsync: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
+        }
+
         private async Task ProcessVideoAsync(Guid videoId, string videoUrl)
         {
             using var scope = _scopeFactory.CreateScope();
@@ -80,6 +159,7 @@ namespace Edutopia.Services
             try
             {
                 await ProcessDiagramsAsync(videoUrl, videoId);
+                await ProcessSummerizationAsync(videoUrl, videoId);
             }
             catch (Exception ex)
             {
