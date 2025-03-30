@@ -47,9 +47,8 @@ namespace Edutopia.Services
             if (user == null)
                 return null;
 
-            var document = _db.Documents.Where(x => x.Id == documentID).FirstOrDefault();
-			
-			var session = new History()
+			var document = await _dbContext.Documents.FindAsync(documentID);
+            var session = new History()
 			{
 				Id = Guid.NewGuid(),
 				DocumentId = document.Id,
@@ -58,7 +57,6 @@ namespace Edutopia.Services
             };
 			document.HistoryId = session.Id;
 			session.Document = document;
-			_db.Documents.Update(document);
 			await _db.History.AddAsync(session);
 			await _db.SaveChangesAsync();
 			return session.ToResponse();

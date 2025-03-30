@@ -156,7 +156,7 @@ namespace Edutopia.Services
 
             try
             {
-                await ProcessDiagramsAsync(videoUrl, videoId);
+                //await ProcessDiagramsAsync(videoUrl, videoId);
                 await ProcessSummerizationAsync(videoUrl, videoId);
             }
             catch (Exception ex)

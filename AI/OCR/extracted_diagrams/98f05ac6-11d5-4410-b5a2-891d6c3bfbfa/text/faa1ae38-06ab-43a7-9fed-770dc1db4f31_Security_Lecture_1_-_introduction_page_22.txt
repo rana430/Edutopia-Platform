@@ -1,7 +1,0 @@
-Modification Attack
-
-Darth Darth modifies
-message from Bob
-to Alice
-
-Alice

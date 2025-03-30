@@ -1,9 +1,0 @@
-Substitution Techniques
-
-? Ceaser
-
-? Monoalphabetic
-? Polyalphabetic
-? Playfair
-
-? Hill Cipher

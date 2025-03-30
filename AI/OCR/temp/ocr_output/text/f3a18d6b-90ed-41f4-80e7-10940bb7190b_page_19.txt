@@ -1,4 +1,0 @@
-Your Turn... ©
-
-? Encrypt the following PT =" Computer Systems” using
-playfair cipher with keyword = “balloon”

@@ -1,9 +1,0 @@
-security Concepts
-
-What is network security?
-
-= Protection of networks and their service from
-Unauthorized modification, destruction, or disclosure
-
-= Involves protecting network infrastructure, devices, and
-communication channels

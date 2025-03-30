@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net.Http;
+using System.Reflection.Metadata;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -49,7 +50,6 @@ public class DocumentService
 
             using (var scope = _scopeFactory.CreateScope())
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDBContext>();
 
                 var userId = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id.ToString() == userId);
@@ -89,10 +89,11 @@ public class DocumentService
                 _dbContext.Documents.Add(document);
                 await _dbContext.SaveChangesAsync();
 
-                _ = Task.Run(() => SendFileToAIModel(document.Id, filePath));
+                await SendFileToAIModel(document.Id, filePath);
 
+                var newDocument = await _dbContext.Documents.FindAsync(document.Id);
 
-                return new UploadDocResponseDTO(true, "File processed successfully.", document.Id, document.extractedText);
+                return new UploadDocResponseDTO(true, "File processed successfully.", document.Id, newDocument.extractedText);
             }
         }
         catch (Exception ex)
@@ -104,58 +105,45 @@ public class DocumentService
 
 
     private async Task SendFileToAIModel(Guid documentId, string filePath)
-    {
+{
+
         try
         {
             using var form = new MultipartFormDataContent();
-            form.Add(new ByteArrayContent(await File.ReadAllBytesAsync(filePath).ConfigureAwait(false)), "file", Path.GetFileName(filePath));
+            form.Add(new ByteArrayContent(await File.ReadAllBytesAsync(filePath)), "file", Path.GetFileName(filePath));
+            var response = await _httpClient.PostAsync(_ocrModelUrl, form);
+            Console.WriteLine($"Response status code: {response.StatusCode}");
 
-            var response = await _httpClient.PostAsync(_ocrModelUrl, form).ConfigureAwait(false);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Raw response content: {responseContent}");
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.Error.WriteLine($"Failed to send file. Status: {response.StatusCode}");
-                return;
+                throw new Exception($"API returned status code {response.StatusCode}: {responseContent}");
             }
 
-            var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            OcrDocumentResponse? aiResult;
+            Console.WriteLine($"Successfully started processing summarization with video ID: {documentId}");
 
-            try
+
+            var video = await _dbContext.Documents.FindAsync(documentId);
+            if (video != null)
             {
-                aiResult = JsonSerializer.Deserialize<OcrDocumentResponse>(responseBody);
-            }
-            catch (JsonException ex)
-            {
-                Console.Error.WriteLine($"Failed to deserialize OCR response: {ex.Message}");
-                return;
-            }
+                using JsonDocument doc = JsonDocument.Parse(responseContent);
+                string summary = doc.RootElement.GetProperty("extracted_text").GetString();
 
-            if (aiResult is null || string.IsNullOrWhiteSpace(aiResult.extractedText))
-            {
-                Console.Error.WriteLine("OCR model returned empty or null extracted text.");
-                return;
+                video.extractedText = summary;
+                Console.WriteLine(summary);
+                await _dbContext.SaveChangesAsync();
             }
 
-            var document = await _dbContext.Documents.FindAsync(documentId);
-            if (document is null)
-            {
-                Console.Error.WriteLine($"Document with ID {documentId} not found.");
-                return;
-            }
-
-            document.extractedText = aiResult.extractedText;
-            _dbContext.Documents.Update(document);
-            await _dbContext.SaveChangesAsync();
-
-            Console.WriteLine($"Successfully updated document {documentId}.");
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            Console.Error.WriteLine($"Unexpected error in SendFileToAIModel: {ex.Message}");
+            Console.WriteLine($"HTTP Request failed: {ex.Message}");
+            Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+            throw new Exception($"Failed to connect to API: {ex.Message}", ex);
         }
     }
-
 
     public class OcrDocumentResponse
     {
