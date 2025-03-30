@@ -4,8 +4,10 @@ import { useState } from "react";
 import Sidebar from "@/components/sidebar";
 import PageIllustration from "@/components/page-illustration";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation"; // Import useRouter for navigation
 
 export default function SummarizationPage() {
+  const router = useRouter(); // Initialize router
   const [summaryText, setSummaryText] = useState(
     "I can’t believe how much time has passed since we last caught up! Lately, I’ve been thinking about you and all the great memories we shared, and I realized I just had to reach out..."
   );
@@ -58,6 +60,16 @@ export default function SummarizationPage() {
           >
             {summaryText}
           </motion.div>
+
+          {/* Button to navigate to Chatbot */}
+          <div className="flex justify-center mt-6">
+            <button 
+              onClick={() => router.push("/chatbot")}
+              className="px-6 py-3 bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition-all duration-300"
+            >
+              Go to Chatbot
+            </button>
+          </div>
         </motion.div>
       </motion.section>
 
