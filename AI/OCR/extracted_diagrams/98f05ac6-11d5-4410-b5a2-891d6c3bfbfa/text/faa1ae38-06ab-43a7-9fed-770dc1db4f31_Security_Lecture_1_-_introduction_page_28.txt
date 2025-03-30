@@ -1,0 +1,14 @@
+Cryptographic Algorithms
+
+Cryptographic Algorithms can also be categorized into:
+1. Keyless : Do not use any keys during cryptographic
+transformations.
+
+2. Single-key : The result of a transformation is a
+function of the input data and a single key, Known as
+a secret key.
+
+3. Two-key : Iwo different but related keys are used,
+referred to as a private key and a public key.
+
+28

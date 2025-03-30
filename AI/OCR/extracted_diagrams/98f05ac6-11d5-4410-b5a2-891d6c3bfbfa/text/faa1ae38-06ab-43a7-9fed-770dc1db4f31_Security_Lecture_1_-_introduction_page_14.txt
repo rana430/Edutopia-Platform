@@ -1,0 +1,13 @@
+Cryptographic/Information
+security Objectives
+
+3. Availability : Assures that systems work promptly, and
+service Is not denied to authorized users.
+
+4. Authenticity: Assures that users are who they claim to
+be (not impersonated) and that each input arriving at the
+system came from a trusted source.
+
+5. Accountability: ensures that actions performed by
+users or systems are recorded and traceable (allowing
+audits).

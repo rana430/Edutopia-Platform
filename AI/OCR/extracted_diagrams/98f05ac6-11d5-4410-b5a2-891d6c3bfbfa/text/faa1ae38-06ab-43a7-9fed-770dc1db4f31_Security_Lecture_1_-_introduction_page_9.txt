@@ -1,0 +1,10 @@
+security Concepts
+
+What is Cryptography?
+
+# A branch of mathematics that deals with the
+transformation of data in order to ensure information
+security.
+
+= Cryptography is an essential component in the
+secure storage and transmission of data

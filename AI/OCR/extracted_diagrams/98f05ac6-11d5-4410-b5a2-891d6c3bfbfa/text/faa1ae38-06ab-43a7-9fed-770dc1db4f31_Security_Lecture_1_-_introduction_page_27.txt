@@ -1,0 +1,16 @@
+security Mechanisms
+
+= No single mechanism can provide all services
+= Common in most mechanisms: cryptographic algorithms.
+= Cryptographic Algorithms can be broadly categorized into:
+
+1. Reversible Cryptographic Algorithms: such as
+encryption algorithms that allow data to be encrypted
+and subsequently decrypted
+
+2. Irreversible (one-way) Cryptographic Algorithms:
+include hash algorithms and message authentication
+codes, which are used in digital signature and message
+authentication applications.
+
+27

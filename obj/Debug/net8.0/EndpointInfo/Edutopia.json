@@ -351,6 +351,10 @@
             "type": "string",
             "nullable": true
           },
+          "extractedText": {
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"

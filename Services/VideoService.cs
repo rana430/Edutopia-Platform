@@ -19,7 +19,7 @@ namespace Edutopia.Services
         private readonly AuthService _authService;
         private readonly HttpClient _httpClient;
         private readonly VideoStatusService _videoStatusService;
-        private readonly string _transcriptApiUrl = "http://localhost:5000/summarize";
+        private readonly string _transcriptApiUrl = "http://localhost:5000/summarize/video";
         private readonly string _objectDetectionApiUrl = "http://localhost:5002/process_video";
 
         public VideoService(
@@ -111,8 +111,6 @@ namespace Edutopia.Services
                     {
                         throw new Exception($"Failed to deserialize API response. Response content: {responseContent}");
                     }
-
-
 
                     Console.WriteLine($"Successfully started processing summarization with video ID: {videoId}");
 

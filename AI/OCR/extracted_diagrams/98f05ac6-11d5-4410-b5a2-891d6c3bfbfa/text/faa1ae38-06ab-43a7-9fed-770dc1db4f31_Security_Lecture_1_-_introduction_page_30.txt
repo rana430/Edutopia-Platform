@@ -1,0 +1,16 @@
+Keyless Cryptographic
+Algorithms
+
+1. Cryptographic hash function: A function turns a
+variable amount of text into a small, fixed-length
+value called a hash value, hash code, or digest.
+
+= Used to ensure data integrity
+
+2. A pseudorandom number generator: produces a
+deterministic sequence of numbers or bits that has
+the appearance of being a truly random sequence.
+
+= Used in key generation
+
+30

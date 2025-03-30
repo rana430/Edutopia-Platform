@@ -1,0 +1,8 @@
+Traffic Analysis Attack
+
+Observe pattern of
+messages from Bob
+to Alice
+
+Internet or
+other comms facility

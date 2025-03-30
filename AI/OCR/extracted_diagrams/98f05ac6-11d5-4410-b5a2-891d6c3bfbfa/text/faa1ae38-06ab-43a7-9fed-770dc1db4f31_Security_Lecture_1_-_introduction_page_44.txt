@@ -1,0 +1,19 @@
+TRUE OR FALSE
+
+1. Passive attacks are very easy to detect because they involve
+alteration of the data.
+
+2. Data authenticity assures that private or confidential
+information is not made available or disclosed to
+unauthorized individuals.
+
+3. Nonrepudiation prevents either sender or receiver from
+denying a transmitted message.
+
+4. On average, half of all possible keys must be tried to
+achieve success with a brute-force attack.
+
+5. The process of converting from plaintext to ciphertext is
+known as deciphering or decryption.
+
+45

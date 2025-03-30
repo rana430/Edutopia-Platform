@@ -54,6 +54,7 @@ namespace Edutopia.Services
 				Id = Guid.NewGuid(),
 				DocumentId = document.Id,
 				UserId = user.Id,
+                User = user,
             };
 			document.HistoryId = session.Id;
 			session.Document = document;

@@ -50,13 +50,15 @@ namespace Edutopia.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Summarization")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("extractedText")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

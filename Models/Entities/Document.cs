@@ -24,7 +24,9 @@ public class Document
     [MaxLength(100)]
     public string FileType { get; set; }
 
-	public string Summarization { get; set; }  // AI-Generated Summary
+	public string? Summarization { get; set; }
+
+    public string? extractedText { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

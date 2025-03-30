@@ -1,0 +1,10 @@
+Playfair Cipher
+
+? It is a multiple letter substitution cipher.
+
+? It treats diagrams (block of two letters) in plaintext as
+single units and translates these units into ciphertext
+diagrams.
+
+? The playfair algorithm is based on the use of 5x5 matrix
+of letters constructed using a keyword

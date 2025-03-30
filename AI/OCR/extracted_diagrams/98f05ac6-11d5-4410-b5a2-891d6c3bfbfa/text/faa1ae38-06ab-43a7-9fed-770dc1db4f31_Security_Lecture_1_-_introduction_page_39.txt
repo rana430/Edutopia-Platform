@@ -1,0 +1,11 @@
+Attacks on Encryption
+
+ochemes
+There are two general approaches to attacking any
+encryption scheme:
+
+= Brute-Force attack
+
+= Cryptanalysis (Cryptanalytic attacks)
+
+39

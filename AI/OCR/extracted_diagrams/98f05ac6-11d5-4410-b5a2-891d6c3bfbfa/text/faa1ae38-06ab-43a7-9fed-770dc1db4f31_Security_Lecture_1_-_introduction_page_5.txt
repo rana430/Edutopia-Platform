@@ -1,0 +1,12 @@
+Course References
+
+1. William Stallings, “Cryptography and
+Network Security: Principles and
+Practice”, Prentice Hall, 8° Edition,
+2020
+
+2. Menezes, Alfred J.; Vanstone, Scott
+A.; Van Oorschot, Paul C, “Handbook of
+Applied Cryptography”, CRC, Sth
+Edition, 2001
+

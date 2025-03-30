@@ -1,0 +1,27 @@
+single-key Cryptographic
+Algorithms
+
+#" Encryption algorithms that use a single key are referred to as
+symmetric encryption algorithms
+
+# With symmetric encryption, an encryption algorithm takes as input
+the data to be protected (plaintext) and a secret key and
+produces a ciphertext.
+
+=» Acorresponding decryption algorithm takes the ciphertext
+(transformed data) and the same secret key and recovers the
+original datz
+
+Plaintext
+
+Plaintext Ciphertext
+
+Sender Encrypt Decrypt Recipient
+> ~
+
+dtoencrypt
+and decrypi message
+
+31
+
+Shared secret key

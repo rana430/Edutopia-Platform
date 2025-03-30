@@ -1,0 +1,231 @@
+
+==================================================
+Page 1
+==================================================
+
+and Network
+Security jp
+
+Data Security
+
+Section 1
+
+Chapter 1: Introduction
+Chapter 2: Classical Encryption Techniques
+
+
+
+==================================================
+Page 2
+==================================================
+
+Introduction
+
+? Cryptology:
+This is the study of techniques for ensuring the secrecy
+and/or authenticity of information. The two main branches of
+cryptology are:
+Cryptography: which is the study of the design of such
+techniques;
+Cryptanalysis: which deals with the defeating such
+
+techniques, to recover information
+
+
+==================================================
+Page 3
+==================================================
+
+Introduction
+
+?
+
+2
+
+Computer security: Refers to the security of
+computers against intruders (e.g., hackers) and
+malicious software (e.g., viruses).
+
+Typically, the computer to be secured is attached to a
+network and the bulk of the threats arise from the
+network.
+
+Network security: This area covers the use of
+cryptographic algorithms in network protocols and
+network applications.
+
+
+==================================================
+Page 4
+==================================================
+
+Classical Encryption Techniques
+
+Secret key shared by Secret key shared by
+sender and recipient sender and o nt
+
+Transmitted
+__—_ ae gs rtext
+——_
+Plaintext , ti ae D fi — Plaintext
+input anCryp ion algorithm ecryption algorithm output
+(e.g., DES) (reverse of encryption
+
+algorithm)
+
+Simplified Model of Conventional Encryption
+
+
+==================================================
+Page 5
+==================================================
+
+Classical Encryption Techniques
+
+Secure channel
+
+Model of Conventional Cryptosystem
+
+
+==================================================
+Page 6
+==================================================
+
+Classical Encryption Techniques
+
+? Unconditionally Secure:
+
+C.T have no enough information to determine only one
+corresponding PT
+
+? Computationally Secure:
+
+Cost to break the cipher exceeds the value of the information
+
+Time required to break the cipher exceeds the information life
+time
+
+
+==================================================
+Page 7
+==================================================
+
+Classical Encryption Techniques
+
+Encryption techniques can be classified according to:
+
+Type of Number of The way the
+Operation used keys used data processed
+Symmetric ( 1 key) Block Cipher
+Transposition Asymmetric ( 2 keys) Stream Cipher
+Public - Private
+Product Using one way math function
+f(x) y ... easy
+
+f'(y)U ... infeasible
+No key distribution problem
+
+
+
+==================================================
+Page 8
+==================================================
+
+Classical Encryption Techniques
+
+Cryptanalysis techniques can be classified according to:
+
+Methodology
+
+Cryptanalysis Attack
+Depends on the nature of
+the algorithm and lang.
+characteristics
+(Differential, Linear)
+
+Brute Force Attack
+
+Try every possible key on
+C.T till get an intelligible
+transformation of C.T
+
+Amount of available
+information
+
+Cipher text only
+
+(Enc + C.T)
+
+Known P.T
+
+(Enc+ C.T
+
+P.T pairs)
+
+Chosen P.T
+
+(Enc+ C.T
+pairs)
+
+P.T specific
+
+
+==================================================
+Page 9
+==================================================
+
+Steganography
+
+? Methods of hiding the existence of a message or other data. This is
+different than cryptography, which hides the meaning of a message but does
+not hide the message itself.
+
+3rd March
+Dear George,
+
+Greetings +o all at Oxford. Many thanks for your
+letter and for the Summer exatination package.
+All Entry Forms and Fees Forms should be ready
+for final despatch to the Syndicate by Friday
+2Oth or at the very latest, i'm told. by the 275%
+Admin has improved here, though there's room
+for improvement stil; just give us all two or three
+more years and we'll really show you! Please
+don't let these wretched 16+ proposals destroy
+your basis O and A pattern Certainly this
+
+sort of change, if implemented immediately,
+would bring chaos.
+
+Sincerely yours.
+
+
+==================================================
+Page 10
+==================================================
+
+Substitution Techniques
+
+? Ceaser
+
+? Monoalphabetic
+? Polyalphabetic
+? Playfair
+
+? Hill Cipher
+
+
+==================================================
+Page 11
+==================================================
+
+Substitution Techniques
+
+? Ceaser
+
+? Monoalphabetic
+? Polyalphabetic
+? Playfair
+
+? Hill Cipher
+

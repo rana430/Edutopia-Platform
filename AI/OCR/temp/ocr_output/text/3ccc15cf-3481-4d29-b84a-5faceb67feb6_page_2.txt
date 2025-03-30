@@ -1,0 +1,11 @@
+Introduction
+
+? Cryptology:
+This is the study of techniques for ensuring the secrecy
+and/or authenticity of information. The two main branches of
+cryptology are:
+Cryptography: which is the study of the design of such
+techniques;
+Cryptanalysis: which deals with the defeating such
+
+techniques, to recover information

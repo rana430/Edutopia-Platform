@@ -1,0 +1,24 @@
+Course Content
+
+—
+
+Introduction to Data Security
+
+Classical Encryption Techniques
+
+Block Ciphers & the Data Encryption Standard (DES)
+Block cipher Operation
+
+Random Bit Generators
+
+stream Ciphers
+
+Number Theory
+
+Public-key Cryptography (PKC) & RSA
+
+Other PKCs
+
+10. Cryptographic Hash Functions
+
+oC ONO TF WwW DY

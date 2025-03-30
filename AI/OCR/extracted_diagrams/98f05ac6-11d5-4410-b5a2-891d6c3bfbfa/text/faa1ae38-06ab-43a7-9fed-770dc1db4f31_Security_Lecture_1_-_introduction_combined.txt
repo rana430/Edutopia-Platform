@@ -1,0 +1,939 @@
+
+==================================================
+Page 1
+==================================================
+
+DATA
+
+1 SECURITY
+
+Lecture |
+
+Dr. Alshaimaa Abo-alian
+
+Introduction to Data Security A_alian@cis.asu.edu.eg
+
+
+
+==================================================
+Page 2
+==================================================
+
+Aim of The Course
+
+= This course covers the basic knowledge of understanding and using
+cryptography to secure data.
+
+= The course begins with:
+o An overview of the main data security objectives
+o Various types of security attacks and threats
+o Taxonomy of different cryptographic algorithms.
+= Topics include:
+o Classical encryption techniques
+o Symmetric and public-key encryption techniques
+o Number theory
+o Block ciphers
+O
+
+Stream ciphers and pseudorandom number generators.
+
+
+==================================================
+Page 3
+==================================================
+
+Course Content
+
+—
+
+Introduction to Data Security
+
+Classical Encryption Techniques
+
+Block Ciphers & the Data Encryption Standard (DES)
+Block cipher Operation
+
+Random Bit Generators
+
+stream Ciphers
+
+Number Theory
+
+Public-key Cryptography (PKC) & RSA
+
+Other PKCs
+
+10. Cryptographic Hash Functions
+
+oC ONO TF WwW DY
+
+
+==================================================
+Page 4
+==================================================
+
+Marks Distribution
+
+a Quizzes: 15% (Week 5 & 9)
+= Midterm : 15% (Week 7)
+
+=» Practical (group project): 20%
+
+a Final exam: 90 %
+
+= lotal: 100 %
+
+
+==================================================
+Page 5
+==================================================
+
+Course References
+
+1. William Stallings, “Cryptography and
+Network Security: Principles and
+Practice”, Prentice Hall, 8° Edition,
+2020
+
+2. Menezes, Alfred J.; Vanstone, Scott
+A.; Van Oorschot, Paul C, “Handbook of
+Applied Cryptography”, CRC, Sth
+Edition, 2001
+
+
+
+==================================================
+Page 6
+==================================================
+
+Lecture Outline
+
+Security Concepts
+
+Security Objectives
+
+Classes of Attacks
+
+security Services Vs. Security mechanisms
+Cryptographic Algorithms
+
+Evaluation Criteria of Cryptographic Algorithms
+
+VV VV VV WV
+
+Models for Evaluating Security
+
+
+==================================================
+Page 7
+==================================================
+
+security Concepts
+
+What is data/information security?
+
+= Protection of data from unauthorized access,
+corruption, or theft throughout its lifecycle.
+
+= Protecting data at rest, in transit, and in use.
+
+» Ensuring confidentiality, integrity, and availability (CIA)
+of data.
+
+
+==================================================
+Page 8
+==================================================
+
+security Concepts
+
+What is network security?
+
+= Protection of networks and their service from
+Unauthorized modification, destruction, or disclosure
+
+= Involves protecting network infrastructure, devices, and
+communication channels
+
+
+==================================================
+Page 9
+==================================================
+
+security Concepts
+
+What is Cryptography?
+
+# A branch of mathematics that deals with the
+transformation of data in order to ensure information
+security.
+
+= Cryptography is an essential component in the
+secure storage and transmission of data
+
+
+==================================================
+Page 10
+==================================================
+
+security Concepts
+
+Cryptology
+
+= Cryptology is the study of cryptography and cryptanalysis
+
+= Cryptanalysis is the study of mathematical techniques for
+attempting to defeat/break cryptographic techniques.
+
+= Acryptosystem is a general term referring to a set of
+cryptographic algorithms used to provide information
+security Services.
+
+
+==================================================
+Page 11
+==================================================
+
+security Objectives
+
+Information
+
+and Network
+Security
+
+
+
+==================================================
+Page 12
+==================================================
+
+Cryptographic/Information
+security Objectives
+
+1. Confidentiality : covers two related concepts:
+
+a) Data confidentiality: Assures that private or confidential
+information is not made available or disclosed to
+unauthorized individuals.
+
+b) Privacy : focuses on how personal or sensitive data is
+collected, used, shared, and stored, ensuring compliance
+with privacy regulations (e.g., GDPR, HIPAA).
+
+= A loss of confidentiality is the unauthorized disclosure of
+information.
+
+
+==================================================
+Page 13
+==================================================
+
+Cryptographic/Information
+security Objectives
+
+2. Integrity : Assures that data (both stored and transmitted) are
+accurate, consistent and changed only in an authorized manner.
+
+= This covers two related concepts:
+
+a) Data authenticity: verifies that data is genuine and originates
+from a legitimate source without any unauthorized
+
+modifications.
+b) Nonrepudiation: Assures that:
+— The sender of information is provided with proof of delivery
+
+— the recipient is provided with proof of the sender’s identity
+
+=> so neither can later deny having processed the information.
+
+= Integrity ensures that data has not been changed, destroyed, or
+lost in an unauthorized or accidental manner.
+
+
+==================================================
+Page 14
+==================================================
+
+Cryptographic/Information
+security Objectives
+
+3. Availability : Assures that systems work promptly, and
+service Is not denied to authorized users.
+
+4. Authenticity: Assures that users are who they claim to
+be (not impersonated) and that each input arriving at the
+system came from a trusted source.
+
+5. Accountability: ensures that actions performed by
+users or systems are recorded and traceable (allowing
+audits).
+
+
+==================================================
+Page 15
+==================================================
+
+Check Your Info.
+
+What is the corresponding Security objective?
+
+1.
+
+ONO TOF WD
+
+Ensures data is from a legitimate source
+Confirms entities are genuine
+
+Protects data from unauthorized access
+Regulates how data is collected and shared
+Tracks user actions for security
+
+Ensures data accuracy and consistency
+Ensures data and systems are accessible
+
+Prevents denial of actions
+
+a) Confidentiality
+b) Integrity
+
+c) Availability
+
+d) Data Authenticity
+e) Authenticity
+
+f) Privacy
+
+g) Non-repudiation
+h) Accountability
+
+
+==================================================
+Page 16
+==================================================
+
+Classes of Attacks
+
+ALI Og
+
+Sender Receiver
+
+What is an attack?
+
+Any action that attempts to
+compromise the security of Observing 7
+information or facilities the message QQ Attacker
+=> Passive attack: Passive Attack
+Makes use of information,
+but not affect system f | | | | 9
+resources = =
+Sender le Receiver
+= Active attack
+eats’
+Alters system resources or ihe reanaat ry a
+operation
+
+Active Attack i
+
+
+==================================================
+Page 17
+==================================================
+
+Classes of Attacks
+
+Passive Attack: only threatens confidentiality of data.
+Examples
+1. Release message contents
+2. Traffic analysis
+=> Relatively hard to detect, but easier to prevent
+
+Active Attack: threatens data integrity, authentication and
+confidentiality.
+
+Examples
+1. Masquerade 3. Modification
+2. Replay 4. Denial of service
+
+=> Relatively hard to prevent, but easier to detect
+
+
+==================================================
+Page 18
+==================================================
+
+Release Message Content
+
+Darth read contents of
+message from Bob
+to Alice
+
+
+
+==================================================
+Page 19
+==================================================
+
+Traffic Analysis Attack
+
+Observe pattern of
+messages from Bob
+to Alice
+
+Internet or
+other comms facility
+
+
+==================================================
+Page 20
+==================================================
+
+Masquerade Attack
+
+Message from Darth
+that appears to be
+from Bob
+
+Internet or
+other comms facility
+
+20
+
+
+==================================================
+Page 21
+==================================================
+
+Replay Attack
+
+Darth Capture message from
+Bob to Alice: later
+
+replay messave to Alice
+
+Internet or
+other comms facility
+
+21
+
+
+==================================================
+Page 22
+==================================================
+
+Modification Attack
+
+Darth Darth modifies
+message from Bob
+to Alice
+
+Alice
+
+
+==================================================
+Page 23
+==================================================
+
+Denial of Service Attack
+
+
+
+==================================================
+Page 24
+==================================================
+
+security Service Vs. Security Mechanism
+
+Security Service
+
+o ACcapability that supports one or more of the security
+objectives
+
+o Implemented by security mechanisms
+
+Security Mechanism
+
+o Amethod for preventing, detecting or recovering from
+an attack
+
+24
+
+
+==================================================
+Page 25
+==================================================
+
+Passive Attacks
+
+(a) Attacks
+
+(b) Services
+
+Active Attacks
+
+
+
+==================================================
+Page 26
+==================================================
+
+security Services
+
+1. Authentication Assure that the communicating entity is the
+one that it claims to be.
+
+2. Access Control Prevent unauthorized use of a resource
+3. Data Confidentiality Protect data from unauthorized disclosure
+
+4. Data Integrity Assure data received are exactly as sent by
+authorized entity
+
+5. Non-repudiation Protect against denial of one entity involved
+in communications of having participated in communications
+
+6. Availability System is accessible and usable on demand by
+authorized users according to intended goal
+
+26
+
+
+==================================================
+Page 27
+==================================================
+
+security Mechanisms
+
+= No single mechanism can provide all services
+= Common in most mechanisms: cryptographic algorithms.
+= Cryptographic Algorithms can be broadly categorized into:
+
+1. Reversible Cryptographic Algorithms: such as
+encryption algorithms that allow data to be encrypted
+and subsequently decrypted
+
+2. Irreversible (one-way) Cryptographic Algorithms:
+include hash algorithms and message authentication
+codes, which are used in digital signature and message
+authentication applications.
+
+27
+
+
+==================================================
+Page 28
+==================================================
+
+Cryptographic Algorithms
+
+Cryptographic Algorithms can also be categorized into:
+1. Keyless : Do not use any keys during cryptographic
+transformations.
+
+2. Single-key : The result of a transformation is a
+function of the input data and a single key, Known as
+a secret key.
+
+3. Two-key : Iwo different but related keys are used,
+referred to as a private key and a public key.
+
+28
+
+
+==================================================
+Page 29
+==================================================
+
+Cryptographic Algorithms
+
+
+
+==================================================
+Page 30
+==================================================
+
+Keyless Cryptographic
+Algorithms
+
+1. Cryptographic hash function: A function turns a
+variable amount of text into a small, fixed-length
+value called a hash value, hash code, or digest.
+
+= Used to ensure data integrity
+
+2. A pseudorandom number generator: produces a
+deterministic sequence of numbers or bits that has
+the appearance of being a truly random sequence.
+
+= Used in key generation
+
+30
+
+
+==================================================
+Page 31
+==================================================
+
+single-key Cryptographic
+Algorithms
+
+#" Encryption algorithms that use a single key are referred to as
+symmetric encryption algorithms
+
+# With symmetric encryption, an encryption algorithm takes as input
+the data to be protected (plaintext) and a secret key and
+produces a ciphertext.
+
+=» Acorresponding decryption algorithm takes the ciphertext
+(transformed data) and the same secret key and recovers the
+original datz
+
+Plaintext
+
+Plaintext Ciphertext
+
+Sender Encrypt Decrypt Recipient
+> ~
+
+dtoencrypt
+and decrypi message
+
+31
+
+Shared secret key
+
+
+==================================================
+Page 32
+==================================================
+
+single-key Cryptographic
+Algorithms
+
+symmetric encryption takes the following forms:
+1. Block cipher
+
+“A block cipher operates on data as a sequence of
+blocks
+
+2. Stream cipher
+
+-A stream cipher operates on data as a sequence of
+bits/bytes
+
+- Used when the data must be processed one symbol at
+a time
+
+32
+
+
+==================================================
+Page 33
+==================================================
+
+Block Cipher Vs. Stream Cipher
+
+Pass |W Block Cipher Ciphertext
+os <a
+
+Plaintext Stre: am Ciph Ciphertext
+
+ons ow lo — EERE sso
+Paes Wome ME riven
+
+
+
+==================================================
+Page 34
+==================================================
+
+single-key Cryptographic
+Algorithms
+
+Another form of single-key cryptographic algorithm is the
+
+message authentication code (MAC)
+
+"A MAC Is a unique tag associated with a data block or
+message to verify the integrity of the message.
+
+= The MAC is generated using a secret key and a
+cryptographic hash function of the message
+
+= The recipient of the message can check if the calculated
+MAC matches the MAC accompanying the message, this
+provides assurance that the message has not been
+altered
+
+34
+
+
+==================================================
+Page 35
+==================================================
+
+Message Authentication Code
+(MAC)
+
+MAC algorithm
+
+
+
+==================================================
+Page 36
+==================================================
+
+Two-key Cryptographic
+Algorithms
+
+= Two-key algorithms involve the use of two related keys (private key &
+public key).
+
+A private key is Known only to a single user or entity, whereas the
+corresponding public key is made available to a number of users.
+
+Encryption algorithms that use two keys are referred to as
+asymmetric (public-key) encryption algorithms.
+
+Plaintext Plaintext
+
+Ciphertext
+
+Sender Encrypt Decrypt Recipient
+A
+
+: Differentkeysare
+? ~=usedtoencrypt
+
+and decrypt
+message
+
+Recipient's Recipient's
+public key private key 36
+
+
+
+==================================================
+Page 37
+==================================================
+
+Two-key Cryptographic
+Algorithms
+
+Digital signature algorithm
+
+A digital signature is a value computed with a
+cryptographic algorithm and associated with a data object
+in such a way that any recipient of the data can use the
+signature to verify the data’s origin and integrity
+
+Alice
+
+the signer of a data object uses sn se
+the signer’s private key to
+
+generate the signature
+
+-O——
+
+Alice's
+private key
+
+Anyone has the corresponding Bob
+public key can verify that
+validity of the signature.
+
+Alice's
+
+publickey 37
+
+
+==================================================
+Page 38
+==================================================
+
+Evaluation Criteria of
+Cryptographic Algorithms
+
+1. Level of security: An upper bound on the amount of
+work necessary to defeat the objective.
+
+2. Functionality: Is it most effective for a given objective?
+
+3. Performance: Efficiency in terms of time, memory and
+Storage usage
+
+4. Ease of implementation: the complexity of
+
+implementation in a software or hardware environment
+38
+
+
+==================================================
+Page 39
+==================================================
+
+Attacks on Encryption
+
+ochemes
+There are two general approaches to attacking any
+encryption scheme:
+
+= Brute-Force attack
+
+= Cryptanalysis (Cryptanalytic attacks)
+
+39
+
+
+==================================================
+Page 40
+==================================================
+
+Brute-Force attack
+
+= Involves an exhaustive search of the key space.
+
+# trying every possible key until an intelligible translation of
+the ciphertext into plaintext is obtained.
+
+= On average, half of all possible keys must be tried to
+achieve SUCCESS.
+
+= the number of keys (i.e., the size of the key space)
+should be large enough to make this attack computationally
+infeasible.
+
+40
+
+
+==================================================
+Page 41
+==================================================
+
+Cryptanalysis (Cryptanalytic
+attacks)
+
+Ciphertext-only attack (COA): The attacker tries to deduce the
+decryption key or plaintext by only observing ciphertext.
+
+Known-plaintext attack (KPA): The attacker has a set of plaintexts and
+corresponding ciphertexts
+
+Chosen-plaintext attack (CPA): The attacker chooses plaintext and is
+then given corresponding ciphertext.
+
+Adaptive chosen-plaintext attack (ACPA) is a chosen-plaintext attack
+wherein the choice of plaintext may depend on the previous requests.
+
+Chosen-ciphertext attack (CCA): The attacker selects the ciphertext
+and is then given the corresponding plaintext.
+
+Adaptive chosen-ciphertext attack (ACCA) is a chosen-ciphertext attack
+where the choice of ciphertext may depend on the previous requests.
+
+4]
+
+
+==================================================
+Page 42
+==================================================
+
+Models For Evaluating Security
+
+Unconditional security (perfect secrecy): Assumes that the
+attacker must have unlimited computational resources to defeat
+the system.
+
+= the key must be at least as long as the message.
+
+Complexity-theoretic security: worst-case analysis is used to
+determine the computational power in terms of time and space
+(e.g., polynomial, exponential, ...)
+
+Provable security: A cryptographic method is said to be provably
+secure If the difficulty of defeating it can be proven to be as difficult
+as solving a well-known and difficult problem (e.g., integer
+factorization)
+
+43
+
+
+==================================================
+Page 43
+==================================================
+
+Models For Evaluating Security
+
+= Computational security: measures the amount of computational
+effort required to defeat a system (e.g. AES-128 would take about
+2.61*10' years to defeat)
+
+= Anencryption scheme is said to be computationally secure if
+either of the two criteria are met:
+
+The cost of breaking the cipher exceeds the value of the
+encrypted information.
+
+The time required to break the cipher exceeds the useful
+lifetime of the information.
+
+44
+
+
+==================================================
+Page 44
+==================================================
+
+TRUE OR FALSE
+
+1. Passive attacks are very easy to detect because they involve
+alteration of the data.
+
+2. Data authenticity assures that private or confidential
+information is not made available or disclosed to
+unauthorized individuals.
+
+3. Nonrepudiation prevents either sender or receiver from
+denying a transmitted message.
+
+4. On average, half of all possible keys must be tried to
+achieve success with a brute-force attack.
+
+5. The process of converting from plaintext to ciphertext is
+known as deciphering or decryption.
+
+45
+
+
+==================================================
+Page 45
+==================================================
+
+COMPLETE
+
+1. A loss of is the unauthorized disclosure of
+information.
+
+2. Verifying that users are who they claim to be and that each
+input arriving at the system came from a trusted source is
+
+3. Data appended to a data unit that allows a recipient of the
+data unit to prove the source and integrity of the data unit
+and protect against forgery is a(n)
+
+4. If both sender and receiver use the same key, the encryption
+system is referred to as
+
+5. The attack is the easiest to defend against
+because the opponent has the least amount of information to
+work with.
+
+46
+
+
+==================================================
+Page 46
+==================================================
+
+Thank you
+

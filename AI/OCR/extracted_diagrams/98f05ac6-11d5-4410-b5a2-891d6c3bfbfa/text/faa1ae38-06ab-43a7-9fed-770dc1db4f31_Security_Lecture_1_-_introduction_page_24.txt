@@ -1,0 +1,15 @@
+security Service Vs. Security Mechanism
+
+Security Service
+
+o ACcapability that supports one or more of the security
+objectives
+
+o Implemented by security mechanisms
+
+Security Mechanism
+
+o Amethod for preventing, detecting or recovering from
+an attack
+
+24

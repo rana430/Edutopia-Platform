@@ -53,7 +53,7 @@ namespace Edutopia.Controllers
 				return BadRequest(new { message = result.Message });
 
 
-			var sessionResponse = _sessionService.CreateDocSession(result.DocumentId, Request);
+			Task<SesseionResponseDTO> sessionResponse = _sessionService.CreateDocSession(result.DocumentId, Request);
 
 			return Ok(sessionResponse);
 		}

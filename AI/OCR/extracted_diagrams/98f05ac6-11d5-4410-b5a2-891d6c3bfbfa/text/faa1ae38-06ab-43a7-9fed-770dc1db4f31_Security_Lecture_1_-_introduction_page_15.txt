@@ -1,0 +1,32 @@
+Check Your Info.
+
+What is the corresponding Security objective?
+
+1.
+
+ONO TOF WD
+
+Ensures data is from a legitimate source
+Confirms entities are genuine
+
+Protects data from unauthorized access
+Regulates how data is collected and shared
+Tracks user actions for security
+
+Ensures data accuracy and consistency
+Ensures data and systems are accessible
+
+Prevents denial of actions
+
+a) Confidentiality
+b) Integrity
+
+c) Availability
+
+d) Data Authenticity
+e) Authenticity
+
+f) Privacy
+
+g) Non-repudiation
+h) Accountability

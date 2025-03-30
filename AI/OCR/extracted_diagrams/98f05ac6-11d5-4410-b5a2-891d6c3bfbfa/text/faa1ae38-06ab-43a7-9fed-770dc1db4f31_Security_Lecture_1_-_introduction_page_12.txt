@@ -1,0 +1,15 @@
+Cryptographic/Information
+security Objectives
+
+1. Confidentiality : covers two related concepts:
+
+a) Data confidentiality: Assures that private or confidential
+information is not made available or disclosed to
+unauthorized individuals.
+
+b) Privacy : focuses on how personal or sensitive data is
+collected, used, shared, and stored, ensuring compliance
+with privacy regulations (e.g., GDPR, HIPAA).
+
+= A loss of confidentiality is the unauthorized disclosure of
+information.

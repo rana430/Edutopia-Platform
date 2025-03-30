@@ -1,0 +1,29 @@
+Two-key Cryptographic
+Algorithms
+
+Digital signature algorithm
+
+A digital signature is a value computed with a
+cryptographic algorithm and associated with a data object
+in such a way that any recipient of the data can use the
+signature to verify the data’s origin and integrity
+
+Alice
+
+the signer of a data object uses sn se
+the signer’s private key to
+
+generate the signature
+
+-O——
+
+Alice's
+private key
+
+Anyone has the corresponding Bob
+public key can verify that
+validity of the signature.
+
+Alice's
+
+publickey 37

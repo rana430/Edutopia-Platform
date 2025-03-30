@@ -94,7 +94,7 @@ def process_text(text):
     document_chain = create_stuff_documents_chain(llm, summary_prompt)
     return create_retrieval_chain(retriever, document_chain)
 
-@app.route('/summarize', methods=['POST'])
+@app.route('/summarize/video', methods=['POST'])
 def summarize():
     start = time.process_time()
     
@@ -120,6 +120,33 @@ def summarize():
         
         # ✅ Generate Summary
         response = retrieval_chain.invoke({"input": transcript})
+        elapsed_time = time.process_time() - start
+        
+        logger.info(f"Summary: {response['answer']}")
+        return jsonify({
+            'summary': response['answer'],
+            'response_time': elapsed_time
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/summarize/text', methods=['POST'])
+def summarize_text():
+    start = time.process_time()
+    
+    try:
+        data = request.get_json()
+        text = data.get("text")
+
+        if not text:
+            return jsonify({"error": "Missing text parameter"}), 400
+
+        # ✅ Process transcript into vector storage
+        retrieval_chain = process_text(text)
+        
+        # ✅ Generate Summary
+        response = retrieval_chain.invoke({"input": text})
         elapsed_time = time.process_time() - start
         
         logger.info(f"Summary: {response['answer']}")

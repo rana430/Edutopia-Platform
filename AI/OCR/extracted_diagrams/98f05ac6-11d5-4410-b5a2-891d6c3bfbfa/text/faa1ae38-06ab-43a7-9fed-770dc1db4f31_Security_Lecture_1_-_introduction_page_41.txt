@@ -1,0 +1,22 @@
+Cryptanalysis (Cryptanalytic
+attacks)
+
+Ciphertext-only attack (COA): The attacker tries to deduce the
+decryption key or plaintext by only observing ciphertext.
+
+Known-plaintext attack (KPA): The attacker has a set of plaintexts and
+corresponding ciphertexts
+
+Chosen-plaintext attack (CPA): The attacker chooses plaintext and is
+then given corresponding ciphertext.
+
+Adaptive chosen-plaintext attack (ACPA) is a chosen-plaintext attack
+wherein the choice of plaintext may depend on the previous requests.
+
+Chosen-ciphertext attack (CCA): The attacker selects the ciphertext
+and is then given the corresponding plaintext.
+
+Adaptive chosen-ciphertext attack (ACCA) is a chosen-ciphertext attack
+where the choice of ciphertext may depend on the previous requests.
+
+4]

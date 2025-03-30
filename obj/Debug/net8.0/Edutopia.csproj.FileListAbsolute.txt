@@ -173,7 +173,6 @@ C:\Users\LENOVO\source\repos\Edutopia-BackendNNN\obj\Debug\net8.0\ref\Edutopia.d
 F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\etc\jupyter\nbconfig\notebook.d\pydeck.json
 F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\altair\vegalite\v5\schema\vega-lite-schema.json
 F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\altair\vegalite\v5\schema\vega-themes.json
-F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\decorator-5.2.1.dist-info\pbr.json
 F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema\benchmarks\issue232\issue.json
 F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft201909\metaschema.json
 F:\GP\Edutopia\bin\Debug\net8.0\AI\venv\Lib\site-packages\jsonschema_specifications\schemas\draft202012\metaschema.json

@@ -1,0 +1,12 @@
+security Concepts
+
+Cryptology
+
+= Cryptology is the study of cryptography and cryptanalysis
+
+= Cryptanalysis is the study of mathematical techniques for
+attempting to defeat/break cryptographic techniques.
+
+= Acryptosystem is a general term referring to a set of
+cryptographic algorithms used to provide information
+security Services.

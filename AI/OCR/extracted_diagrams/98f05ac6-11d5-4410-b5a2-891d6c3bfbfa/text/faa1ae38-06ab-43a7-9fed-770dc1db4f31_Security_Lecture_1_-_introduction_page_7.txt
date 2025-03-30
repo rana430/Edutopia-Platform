@@ -1,0 +1,11 @@
+security Concepts
+
+What is data/information security?
+
+= Protection of data from unauthorized access,
+corruption, or theft throughout its lifecycle.
+
+= Protecting data at rest, in transit, and in use.
+
+» Ensuring confidentiality, integrity, and availability (CIA)
+of data.

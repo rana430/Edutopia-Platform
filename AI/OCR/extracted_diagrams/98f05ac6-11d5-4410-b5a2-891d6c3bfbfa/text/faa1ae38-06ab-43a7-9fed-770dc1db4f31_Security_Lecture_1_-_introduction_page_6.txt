@@ -1,0 +1,16 @@
+Lecture Outline
+
+Security Concepts
+
+Security Objectives
+
+Classes of Attacks
+
+security Services Vs. Security mechanisms
+Cryptographic Algorithms
+
+Evaluation Criteria of Cryptographic Algorithms
+
+VV VV VV WV
+
+Models for Evaluating Security

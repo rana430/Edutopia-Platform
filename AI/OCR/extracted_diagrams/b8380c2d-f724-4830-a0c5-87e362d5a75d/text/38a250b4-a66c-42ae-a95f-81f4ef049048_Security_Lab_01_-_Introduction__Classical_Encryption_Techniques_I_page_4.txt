@@ -1,0 +1,15 @@
+Classical Encryption Techniques
+
+Secret key shared by Secret key shared by
+sender and recipient sender and o nt
+
+Transmitted
+__—_ ae gs rtext
+——_
+Plaintext , ti ae D fi — Plaintext
+input anCryp ion algorithm ecryption algorithm output
+(e.g., DES) (reverse of encryption
+
+algorithm)
+
+Simplified Model of Conventional Encryption

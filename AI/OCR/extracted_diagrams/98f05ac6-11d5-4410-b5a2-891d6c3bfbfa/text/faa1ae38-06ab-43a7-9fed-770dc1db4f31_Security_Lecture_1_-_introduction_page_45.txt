@@ -1,0 +1,20 @@
+COMPLETE
+
+1. A loss of is the unauthorized disclosure of
+information.
+
+2. Verifying that users are who they claim to be and that each
+input arriving at the system came from a trusted source is
+
+3. Data appended to a data unit that allows a recipient of the
+data unit to prove the source and integrity of the data unit
+and protect against forgery is a(n)
+
+4. If both sender and receiver use the same key, the encryption
+system is referred to as
+
+5. The attack is the easiest to defend against
+because the opponent has the least amount of information to
+work with.
+
+46
