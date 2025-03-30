@@ -3,34 +3,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+const API_URL = "http://localhost:5218/api";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const router = useRouter();
 
-  const validateEmail = (email: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-  };
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePassword = (password: string) => password.length >= 6;
 
-  const validatePassword = (password: string) => {
-    return password.length >= 6;
-  };
-
-  // Live validation when typing
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newEmail = e.target.value;
     setEmail(newEmail);
     setErrors((prev) => ({
       ...prev,
-      email: !newEmail
-        ? "Email is required."
-        : !validateEmail(newEmail)
-        ? "Invalid email format."
-        : "",
+      email: !newEmail ? "Email is required." : !validateEmail(newEmail) ? "Invalid email format." : "",
     }));
   };
 
@@ -39,38 +31,58 @@ export default function SignIn() {
     setPassword(newPassword);
     setErrors((prev) => ({
       ...prev,
-      password: !newPassword
-        ? "Password is required."
-        : !validatePassword(newPassword)
-        ? "Password must be at least 6 characters long."
-        : "",
+      password: !newPassword ? "Password is required." : !validatePassword(newPassword) ? "Password must be at least 6 characters long." : "",
     }));
   };
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password || errors.email || errors.password) return;
 
-    if (!errors.email && !errors.password && email && password) {
-      console.log("Form submitted successfully");
-      router.push("/upload");
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+      console.log(response.headers.getSetCookie());
+
+      if (response.ok) {
+        const token = response.headers.get("Token") || response.headers.get("token");
+      if (token) {
+        localStorage.setItem("token", token);
+        console.log("Token stored:", token);
+        router.push("/upload"); // Redirect on success
+      } else {
+        console.log("No token found in response headers");
+      }
+        
+      } else {
+        setErrorMessage(data.message || "Invalid credentials");
+      }
+    } catch (error) {
+      console.error("Sign in failed:", error);
+      setErrorMessage("Something went wrong. Please try again.");
     }
+
+    setLoading(false);
   };
 
   return (
     <section>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="py-12 md:py-20">
-          {/* Section header */}
           <div className="pb-12 text-center">
-            <h1 className="animate-[gradient_6s_linear_infinite] bg-[linear-gradient(to_right,var(--color-gray-200),var(--color-indigo-200),var(--color-gray-50),var(--color-indigo-300),var(--color-gray-200))] bg-[length:200%_auto] bg-clip-text font-nacelle text-3xl font-semibold text-transparent md:text-4xl">
-              Welcome to Edutopia
-            </h1>
+            <h1 className="text-3xl font-semibold text-white md:text-4xl">Welcome to Edutopia</h1>
           </div>
 
-          {/* Contact form */}
           <form className="mx-auto max-w-[400px]" onSubmit={handleSignIn}>
             <div className="space-y-5">
-              {/* Email Input */}
               <div>
                 <label className="mb-1 block text-sm font-medium text-indigo-200/65" htmlFor="email">
                   Email
@@ -86,13 +98,12 @@ export default function SignIn() {
                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
               </div>
 
-              {/* Password Input */}
               <div>
                 <div className="mb-1 flex items-center justify-between gap-3">
                   <label className="block text-sm font-medium text-indigo-200/65" htmlFor="password">
                     Password
                   </label>
-                  <Link className="text-sm text-gray-600 hover:underline" href="/reset-password">
+                  <Link className="text-sm text-gray-600 hover:underline" href="/forget-password">
                     Forgot?
                   </Link>
                 </div>
@@ -108,18 +119,15 @@ export default function SignIn() {
               </div>
             </div>
 
-            {/* Sign In Button */}
+            {errorMessage && <p className="text-red-500 text-sm mt-4">{errorMessage}</p>}
+
             <div className="mt-6 space-y-5">
               <button
                 type="submit"
-                className={`btn w-full bg-indigo-600 text-white rounded-md py-2 ${
-                  email && password && !errors.email && !errors.password
-                    ? "hover:bg-indigo-700"
-                    : "opacity-50 cursor-not-allowed"
-                }`}
-                disabled={!email || !password || !!errors.email || !!errors.password}
+                className={`btn w-full bg-indigo-600 text-white rounded-md py-2 ${loading ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
+                disabled={loading || !email || !password || !!errors.email || !!errors.password}
               >
-                Sign in
+                {loading ? "Signing in..." : "Sign in"}
               </button>
 
               <div className="flex items-center gap-3 text-center text-sm italic text-gray-600 before:h-px before:flex-1 before:bg-gray-400/25 after:h-px after:flex-1 after:bg-gray-400/25">
@@ -128,7 +136,6 @@ export default function SignIn() {
             </div>
           </form>
 
-          {/* Bottom link */}
           <div className="mt-6 text-center text-sm text-indigo-200/65">
             Don't have an account?{" "}
             <Link className="font-medium text-indigo-500" href="/signup">

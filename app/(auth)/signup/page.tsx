@@ -1,11 +1,62 @@
-export const metadata = {
-  title: "Sign Up - Open PRO",
-  description: "Page description",
-};
+"use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function SignUp() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+
+    // 
+    try {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        console.error("Registration failed:", data);
+      } else {
+        console.log("Registration success:", data);
+      }
+
+      // Redirect to signin page after successful registration
+      router.push("/signin");
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <section>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -16,8 +67,16 @@ export default function SignUp() {
               Create an Edutpoia Account
             </h1>
           </div>
+          
+          {/* Error message */}
+          {error && (
+            <div className="mx-auto mb-6 max-w-[400px] rounded bg-red-100 p-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+          
           {/* Contact form */}
-          <form className="mx-auto max-w-[400px]">
+          <form className="mx-auto max-w-[400px]" onSubmit={handleSubmit}>
             <div className="space-y-5">
               <div>
                 <label
@@ -32,9 +91,11 @@ export default function SignUp() {
                   className="form-input w-full"
                   placeholder="Your full name"
                   required
+                  value={formData.name}
+                  onChange={handleChange}
                 />
               </div>
-              
+             
               <div>
                 <label
                   className="mb-1 block text-sm font-medium text-indigo-200/65"
@@ -47,6 +108,9 @@ export default function SignUp() {
                   type="email"
                   className="form-input w-full"
                   placeholder="Your email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
                 />
               </div>
               <div>
@@ -61,6 +125,9 @@ export default function SignUp() {
                   type="password"
                   className="form-input w-full"
                   placeholder="Password (at least 6 characters)"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -68,10 +135,13 @@ export default function SignUp() {
                 or
               </div>
             <div className="mt-6 space-y-5">
-              <button className="btn w-full bg-linear-to-t from-indigo-600 to-indigo-500 bg-[length:100%_100%] bg-[bottom] text-white shadow-[inset_0px_1px_0px_0px_--theme(--color-white/.16)] hover:bg-[length:100%_150%]">
-                Register
+              <button 
+                type="submit"
+                className="btn w-full bg-linear-to-t from-indigo-600 to-indigo-500 bg-[length:100%_100%] bg-[bottom] text-white shadow-[inset_0px_1px_0px_0px_--theme(--color-white/.16)] hover:bg-[length:100%_150%]"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Registering..." : "Register"}
               </button>
-             
             </div>
           </form>
           {/* Bottom link */}
