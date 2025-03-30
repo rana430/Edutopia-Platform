@@ -10,6 +10,11 @@ export default function SummarizationPage() {
     "I can’t believe how much time has passed since we last caught up! Lately, I’ve been thinking about you and all the great memories we shared, and I realized I just had to reach out..."
   );
 
+  const [sessions, setSessions] = useState([
+    { id: 1, title: "PDF Summary - March 29", preview: "Summary of uploaded PDF..." },
+    { id: 2, title: "Video Summary - March 28", preview: "Summary of analyzed video..." },
+  ]);
+
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
@@ -55,6 +60,19 @@ export default function SummarizationPage() {
           </motion.div>
         </motion.div>
       </motion.section>
+
+      {/* Right Sidebar - Session History */}
+      <div className="w-64 bg-gray-900 text-white p-4 border-l border-gray-700 h-full overflow-y-auto">
+        <h3 className="text-lg font-semibold text-indigo-400 mb-4">Session History</h3>
+        <ul>
+          {sessions.map((session) => (
+            <li key={session.id} className="mb-4 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 cursor-pointer">
+              <h4 className="text-md font-medium">{session.title}</h4>
+              <p className="text-sm text-gray-400">{session.preview}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
     </motion.div>
   );
 }

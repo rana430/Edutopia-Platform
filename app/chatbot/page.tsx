@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Home, FileText, MessageSquare, LogOut } from "lucide-react"; // Icons
+import { Home, FileText, MessageSquare, LogOut, Clock } from "lucide-react"; // Icons
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<{ text: string; isUser: boolean }[]>([]);
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to the latest message
@@ -18,12 +19,13 @@ export default function Chatbot() {
   const sendMessage = () => {
     if (input.trim() === "") return;
     setMessages([...messages, { text: input, isUser: true }, { text: "Hello! How can I help you?", isUser: false }]);
+    setChatHistory((prevHistory) => [input, ...prevHistory]);
     setInput("");
   };
 
   return (
     <div className="flex h-screen bg-gray-950">
-      {/* Sidebar */}
+      {/* Left Sidebar */}
       <motion.aside
         initial={{ width: "60px" }}
         animate={{ width: isSidebarOpen ? "250px" : "60px" }}
@@ -35,25 +37,22 @@ export default function Chatbot() {
         <h2 className={`mt-2 ml-5 text-2xl font-bold transition-opacity ${isSidebarOpen ? "opacity-100" : "opacity-0"}`}>
           Edutopia
         </h2>
-
         <nav className="w-full flex flex-col mt-10 space-y-4">
           <NavItem href="/" icon={<Home size={24} />} text="Home" isOpen={isSidebarOpen} />
           <NavItem href="/summarization" icon={<FileText size={24} />} text="Summarize" isOpen={isSidebarOpen} />
           <NavItem href="/chatbot" icon={<MessageSquare size={24} />} text="Chatbot" isOpen={isSidebarOpen} />
-          <NavItem href="/" icon={<LogOut size={24} />} text="Log out" isOpen={isSidebarOpen} />  
+          <NavItem href="/" icon={<LogOut size={24} />} text="Log out" isOpen={isSidebarOpen} />
         </nav>
-      </motion.aside> 
+      </motion.aside>
 
       {/* Chat area */}
-      <div className={`flex flex-col flex-1 items-center justify-center transition-all duration-300 ${isSidebarOpen ? "ml-[250px]" : "ml-[60px]"}`}>
-        {/* Updated Heading with Gradient Animation */}
+      <div className="flex flex-1 flex-col items-center justify-center transition-all duration-300 ml-[60px] mr-[250px]">
         <h1 
           className="animate-gradient bg-[linear-gradient(to_right,var(--color-gray-200),var(--color-indigo-200),var(--color-gray-50),var(--color-indigo-300),var(--color-gray-200))] bg-[length:200%_auto] bg-clip-text pb-5 font-nacelle text-4xl font-semibold text-transparent md:text-5xl"
           data-aos="fade-up"
         >
           Welcome to our chatbot
         </h1>
-
         <div className="w-full max-w-2xl flex flex-col bg-gray-800 rounded-lg p-4 shadow-lg h-[70vh] overflow-y-auto">
           {messages.length === 0 && (
             <div className="flex justify-start my-1">
@@ -71,8 +70,6 @@ export default function Chatbot() {
           ))}
           <div ref={messagesEndRef} />
         </div>
-
-        {/* Input area */}
         <div className="w-full max-w-2xl mt-4 flex">
           <input
             type="text"
@@ -87,6 +84,24 @@ export default function Chatbot() {
           </button>
         </div>
       </div>
+
+      {/* Right Sidebar (Chat History) */}
+      <motion.aside
+        className="fixed top-0 right-0 h-screen w-[250px] bg-gray-900 text-white shadow-lg flex flex-col py-6 overflow-hidden"
+      >
+        <h2 className="text-xl font-bold text-center mb-4">Chat History</h2>
+        <div className="flex-1 overflow-y-auto px-4">
+          {chatHistory.length === 0 ? (
+            <p className="text-gray-400 text-center">No previous chats</p>
+          ) : (
+            chatHistory.map((chat, index) => (
+              <div key={index} className="p-2 mb-2 bg-gray-800 rounded-lg text-gray-300 text-sm">
+                {chat}
+              </div>
+            ))
+          )}
+        </div>
+      </motion.aside>
     </div>
   );
 }
