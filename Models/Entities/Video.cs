@@ -19,7 +19,7 @@ public class Video
     [MaxLength(500)]
     public string status { get; set; }
 
-    public string Summerization { get; set; } = "{}";
+    public string Summerization { get; set; };
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -115,13 +115,17 @@ namespace Edutopia.Services
 
 			if (session == null)
 				throw new KeyNotFoundException("Session not found");
-
-			return _db.History.Include(x => x.User).Include(x => x.Document).Include(x => x.Video).Where(s => s.Id == id).First().ToResponse();
+            LoadSession(session);
+            return _db.History.Include(x => x.User).Include(x => x.Document).Include(x => x.Video).Where(s => s.Id == id).First().ToResponse();
 
 
 
 		}
 
+        private void LoadSession(History session)
+        {
+            var context = session.Video.Summerization ?? session.Document.Summarization;
 
-	}
+        }
+    }
 }

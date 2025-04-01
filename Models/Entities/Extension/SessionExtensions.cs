@@ -14,7 +14,7 @@ namespace Edutopia.Models.Entities.Extensions
                 video = current.Video,
                 usr_msgs = current.User_Message,
                 ai_response = current.response,
-                summrizedtxt = (current.Video?.Summerization?.Length > 2)
+                summrizedtxt = (current.Video?.Summerization?.Length > 0)
                                 ? current.Video.Summerization
                                 : (current.Document?.extractedText ?? string.Empty) // Ensure a default value if both are null
             };
