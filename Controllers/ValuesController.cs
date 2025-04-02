@@ -1,4 +1,5 @@
 ﻿using Edutopia.Data;
+using Edutopia.Models.DTOs.NewFolder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,7 @@ namespace Edutopia.Controllers
     [Route("api/[controller]")]
     [ApiController]
     public class ChatController : ControllerBase
-    {
+    {   
         ApplicationDBContext dBContext;
         private readonly HttpClient _httpClient;
         string ApiUrl = "http://127.0.0.1:5000/query";
@@ -23,40 +24,41 @@ namespace Edutopia.Controllers
             this._httpClient = httpClientFactory.CreateClient();
 
         }
-        [HttpPost("c")]
+            [HttpPost("c")]
 
-        public async Task<IActionResult> GetResponse( [FromBody] string query,string id)
-        {
-
-          Guid.TryParse(id, out var chatId);
-            //  var session = await dBContext.History.FirstAsync(x=>x.Id== chatId);
-            /*   if (session != null)
-               {
-                   return BadRequest();
-               }*/
-
-            var requestBody = new
+            public async Task<IActionResult> GetResponse( [FromBody] QueryDTO queryDto )
             {
-                query = query,
-            };
 
-            // Serialize and send the request
-            var content = new StringContent(
-                JsonSerializer.Serialize(requestBody),
-                Encoding.UTF8,
-                "application/json"
-            );
+             // Guid.TryParse(id, out var chatId);
+                //  var session = await dBContext.History.FirstAsync(x=>x.Id== chatId);
+                /*   if (session != null)
+                   {
+                       return BadRequest();
+                   }*/
+                string query = queryDto.query;
 
-            var response = await _httpClient.PostAsync(ApiUrl, content);
-            response.EnsureSuccessStatusCode();
-            var responseContent = await response.Content.ReadAsStringAsync();
-      /*      session.User_Message += "," + query;
-            session.response += "," + responseContent;
-            dBContext.History.Update(session);
-            await dBContext.SaveChangesAsync();*/
+                var requestBody = new
+                {
+                    query = query,
+                };
 
-            return Ok(responseContent);
-        }
+                // Serialize and send the request
+                var content = new StringContent(
+                    JsonSerializer.Serialize(requestBody),
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+                var response = await _httpClient.PostAsync(ApiUrl, content);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+          /*      session.User_Message += "," + query;
+                session.response += "," + responseContent;
+                dBContext.History.Update(session);
+                await dBContext.SaveChangesAsync();*/
+
+                return Ok(responseContent);
+            }
         
 
     }

@@ -19,7 +19,7 @@ namespace Edutopia.Services
         private readonly AuthService _authService;
         private readonly HttpClient _httpClient;
         private readonly VideoStatusService _videoStatusService;
-        private readonly string _transcriptApiUrl = "http://localhost:5000/summarize/video";
+        private readonly string _transcriptApiUrl = "http://127.0.0.1:5001/process_video";
         private readonly string _objectDetectionApiUrl = "http://localhost:5002/process_video";
 
         public VideoService(
@@ -59,7 +59,9 @@ namespace Edutopia.Services
                 var video = new Video
                 {
                     VideoUrl = model.VideoUrl,
-                    status = "Processing"
+                    status = "Processing",
+                    Summerization= "Processing",
+                    DiagramCount=0,
                 };
 
                 dbContext.Videos.Add(video);
@@ -67,7 +69,7 @@ namespace Edutopia.Services
 
                 // Start background processing safely
                 _ = Task.Run(() => ProcessVideoAsync(video.Id, model.VideoUrl));
-
+        
                 return (true, "Video URL uploaded and processing started.", video.Id);
             }
         }
@@ -120,11 +122,10 @@ namespace Edutopia.Services
                     var video = await dbContext.Videos.FindAsync(videoId);
                     if (video != null)
                     {
-                        using JsonDocument doc = JsonDocument.Parse(responseContent);
-                        string summary = doc.RootElement.GetProperty("summary").GetString();
 
-                        video.Summerization = summary;
-                        Console.WriteLine(summary);
+
+                        video.Summerization = responseContent;
+                 
                         video.SummerizationStatus = "Complete";
                         await dbContext.SaveChangesAsync();
                     }

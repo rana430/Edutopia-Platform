@@ -85,6 +85,7 @@ namespace Edutopia.Services
 				Id = Guid.NewGuid(),
 				VideoId = video.Id,
 				UserId = user.Id,
+                
 			};
 			video.HistoryId = session.Id;
 			session.Video = video;
@@ -115,17 +116,12 @@ namespace Edutopia.Services
 
 			if (session == null)
 				throw new KeyNotFoundException("Session not found");
-            LoadSession(session);
+
             return _db.History.Include(x => x.User).Include(x => x.Document).Include(x => x.Video).Where(s => s.Id == id).First().ToResponse();
 
 
 
 		}
 
-        private void LoadSession(History session)
-        {
-            var context = session.Video.Summerization ?? session.Document.Summarization;
-
-        }
     }
 }
