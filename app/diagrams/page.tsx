@@ -7,13 +7,6 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { AlertCircle, FileWarning } from "lucide-react";
 
-// Add this style to hide the navigation bar
-const hideNavStyle = {
-  nav: {
-    display: 'none'
-  }
-};
-
 interface Diagram {
   filePath: string;
   id: string;
@@ -64,6 +57,7 @@ export default function DiagramsPage() {
       const data = await response.json();
       // Parse the nested structure and extract diagrams from $values
       const diagramsArray = data.diagrams?.$values || [];
+      setDiagrams([]);
       const parsedDiagrams = diagramsArray.map(diagram => ({
         id: diagram.id,
         filePath: diagram.filePath.replace('F:\\GP\\Frontend\\Edutopia-frontend\\public', '').replace(/\\/g, '/')
@@ -93,15 +87,6 @@ export default function DiagramsPage() {
 
       if (!sessionId || !token) {
         throw new Error("Session ID or token missing");
-      }
-
-      // Check diagrams status
-      const statusResponse = await fetch(`http://localhost:5218/api/video/${sessionId}/diagrams/status`, {
-        headers: { "Token": token }
-      });
-      
-      if (!statusResponse.ok) {
-        throw new Error("Failed to check diagram status");
       }
 
       // Fetch diagrams after checking status
@@ -160,17 +145,15 @@ export default function DiagramsPage() {
             </div>
           )}
 
-          {diagrams.length === 0 && (
-            <div className="flex justify-center mb-6">
-              <button
-                onClick={extractDiagrams}
-                disabled={extracting}
-                className="px-6 py-3 bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition-all duration-300 disabled:opacity-50"
-              >
-                {extracting ? 'Extracting...' : 'Extract Diagrams'}
-              </button>
-            </div>
-          )}
+          <div className="flex justify-center mb-6">
+            <button
+              onClick={extractDiagrams}
+              disabled={extracting}
+              className="px-6 py-3 bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition-all duration-300 disabled:opacity-50"
+            >
+              {extracting ? 'Extracting...' : 'Extract Diagrams'}
+            </button>
+          </div>
 
           {loading || extracting ? (
             <div className="flex justify-center items-center h-64">

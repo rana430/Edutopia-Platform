@@ -64,6 +64,7 @@ export default function Chatbot() {
         
         // Extract the array from the $values property if it exists
         const sessionsArray = data.$values || data;
+        console.log("Fetched sessions:", sessionsArray);
         
         // Make sure we're working with an array
         
@@ -418,7 +419,7 @@ export default function Chatbot() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[calc(100vh-120px)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-500 scrollbar-track-gray-800">
               {sessions.map((session) => (
                 <button
                   key={session.id}

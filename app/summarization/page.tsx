@@ -128,7 +128,7 @@ export default function SummarizationPage() {
         initial={{ x: 100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="relative flex-1 flex justify-center items-center transition-all duration-300 ml-12"
+        className="relative flex-1 flex justify-center items-center transition-all duration-300 ml-[70px]"
       >
         {/* Page Illustration */}
         <PageIllustration />
@@ -138,7 +138,7 @@ export default function SummarizationPage() {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="w-[80%] max-w-[1200px] bg-gray-900 text-white p-6 rounded-lg shadow-lg border border-indigo-500 relative z-10"
+          className="w-[80%] max-w-[1200px] bg-gray-900 text-white p-6 rounded-lg shadow-lg border border-indigo-500 relative z-10 flex flex-col"
         >
           <motion.h2 
             initial={{ y: -20, opacity: 0 }}
@@ -161,7 +161,7 @@ export default function SummarizationPage() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
             </div>
           ) : (
-            <div className="relative">
+            <div className="relative flex-grow">
               {loadingSession && (
                 <div className="absolute inset-0 bg-gray-800/70 flex justify-center items-center z-20 rounded-lg">
                   <div className="flex flex-col items-center">
@@ -174,7 +174,7 @@ export default function SummarizationPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.7 }}
-                className="max-h-[650px] w-full p-6 overflow-y-auto bg-gray-800 rounded-lg shadow-md text-lg leading-relaxed scrollbar-thin scrollbar-thumb-indigo-500 scrollbar-track-gray-700"
+                className="max-h-[450px] w-full p-6 overflow-y-auto bg-gray-800 rounded-lg shadow-md text-lg leading-relaxed scrollbar-thin scrollbar-thumb-indigo-500 scrollbar-track-gray-700"
               >
                 {summaryText || "Select a session to view its summary."}
               </motion.div>

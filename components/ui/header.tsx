@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import Logo from "./logo";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
+  const pathname = usePathname();
+  
+  // Only show header on the home, signin, and signup pages
+  const visiblePaths = ["/", "/signin", "/signup"];
+  if (!visiblePaths.includes(pathname)) return null;
+
   return (
     <header className="z-30 mt-2 w-full md:mt-5">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
