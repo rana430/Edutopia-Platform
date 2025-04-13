@@ -123,5 +123,39 @@ namespace Edutopia.Services
 
 		}
 
+public async Task<IEnumerable<SesseionResponseDTO>> GetAllSessionsAsync(HttpRequest request)
+{
+    // Always return an empty list instead of null when there's an error
+    if (!request.Headers.TryGetValue("Token", out var token))
+        return new List<SesseionResponseDTO>();
+        
+    var claims = _authService.ValidateResetToken(token);
+    if (claims == null)
+        return new List<SesseionResponseDTO>();
+        
+    var userId = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userId))
+        return new List<SesseionResponseDTO>();
+    
+    try
+    {
+        var sessions = await _db.History
+            .Where(x => x.UserId.ToString() == userId)
+            .ToListAsync();
+            
+        if (sessions == null || !sessions.Any())
+            return new List<SesseionResponseDTO>();
+            
+        // Force immediate evaluation with ToList() to avoid deferred execution issues
+        var sessionResponses = sessions.Select(y => y.ToResponse()).ToList();
+        return sessionResponses;
+    }
+    catch (Exception ex)
+    {
+        // Log the exception if you have logging
+        return new List<SesseionResponseDTO>();
+    }
+}
+
     }
 }

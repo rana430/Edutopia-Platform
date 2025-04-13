@@ -9,6 +9,7 @@ namespace Edutopia.Services.Interfaces
 		Task<SesseionResponseDTO> CreateVideoSession(Guid videoID, HttpRequest request);
 		public  Task<bool> DeleteSession(Guid id);
 		Task<SesseionResponseDTO> GetSession(Guid id);
+        public Task<IEnumerable<SesseionResponseDTO>> GetAllSessionsAsync(HttpRequest request);
 	}
 
 }

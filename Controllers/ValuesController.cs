@@ -28,13 +28,14 @@ namespace Edutopia.Controllers
 
             public async Task<IActionResult> GetResponse( [FromBody] QueryDTO queryDto )
             {
+            var id = queryDto.id;
+              Guid.TryParse(id, out var chatId);
+                 var session = await dBContext.History.FirstAsync(x=>x.Id== chatId);
+            /*   if (session != null)
+               {
+                   return BadRequest();
+               }*/
 
-             // Guid.TryParse(id, out var chatId);
-                //  var session = await dBContext.History.FirstAsync(x=>x.Id== chatId);
-                /*   if (session != null)
-                   {
-                       return BadRequest();
-                   }*/
                 string query = queryDto.query;
 
                 var requestBody = new
@@ -52,12 +53,12 @@ namespace Edutopia.Controllers
                 var response = await _httpClient.PostAsync(ApiUrl, content);
                 response.EnsureSuccessStatusCode();
                 var responseContent = await response.Content.ReadAsStringAsync();
-          /*      session.User_Message += "," + query;
-                session.response += "," + responseContent;
-                dBContext.History.Update(session);
-                await dBContext.SaveChangesAsync();*/
+            session.User_Message += query + ",";
+            session.response += responseContent + ",";
+            dBContext.History.Update(session);
+            await dBContext.SaveChangesAsync();
 
-                return Ok(responseContent);
+            return Ok(responseContent);
             }
         
 

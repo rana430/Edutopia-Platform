@@ -34,18 +34,19 @@ namespace Edutopia.Controllers
 		}
 
 		[HttpPost("video")]
-		public async Task<SesseionResponseDTO> UploadVideo([FromBody] VideoUploadDTO model)
+		public async Task<IActionResult> UploadVideo([FromBody] VideoUploadDTO model)
 		{
 			var result = await _videoService.UploadVideoAsync(model, Request);
 			if (!result.Success)
 				return null;
 
 			var sessionResponse=  await _sessionService.CreateVideoSession(result.VideoId, Request);
+            var tempret=new {sessionId=sessionResponse.Id};
 
-			return sessionResponse;
+			return Ok(tempret);
 		}
 
-		[HttpPost("document")]
+		[HttpPost("document")]  
 		public async Task<IActionResult> UploadDocument([FromForm] DocumentUploadDTO model)
 		{
 			var result = await _documentService.UploadDocumentAsync(model, Request);

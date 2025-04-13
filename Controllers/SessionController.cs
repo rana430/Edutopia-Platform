@@ -14,37 +14,37 @@ using System.Text;
 
 namespace Edutopia.Controllers
 {
-	[Route("api/[controller]")]
-	[ApiController]
-	public class SessionController : ControllerBase
-	{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class SessionController : ControllerBase
+    {
 
-		private readonly ApplicationDBContext dBContext;
-		private readonly ISessionService _sessionService;
+        private readonly ApplicationDBContext dBContext;
+        private readonly ISessionService _sessionService;
         private readonly HttpClient _httpClient;
         string ApiUrl = "http://127.0.0.1:5000/context";
 
 
-        public SessionController(ApplicationDBContext dBContext, ISessionService sessionService,IHttpClientFactory httpClientFactory)
-		{
-			this._sessionService = sessionService;
-			this.dBContext = dBContext;
+        public SessionController(ApplicationDBContext dBContext, ISessionService sessionService, IHttpClientFactory httpClientFactory)
+        {
+            this._sessionService = sessionService;
+            this.dBContext = dBContext;
             this._httpClient = httpClientFactory.CreateClient();
-		}
+        }
 
         [HttpGet("{id}")]
 
         public async Task<IActionResult> GetSession(Guid id)
-		{
-			var session = await _sessionService.GetSession(id);
+        {
+            var session = await _sessionService.GetSession(id);
 
             if (session == null)
-				return BadRequest();
+                return BadRequest();
             //load ai
             var context = session.summrizedtxt;
             var requestBody = new
             {
-                context = context,
+                context     = context,
             };
 
             // Serialize and send the request
@@ -56,19 +56,52 @@ namespace Edutopia.Controllers
 
             var response = await _httpClient.PostAsync(ApiUrl, content);
             response.EnsureSuccessStatusCode();
-            return Ok(session);
+            var returndto = new
+            {
+                summarized_text = session.summrizedtxt,
+                ai_responses = session.ai_response,
+                user_messages = session.usr_msgs
+            };
+            return Ok(returndto);
 
-		}
+        }
 
-		[HttpGet("delete/{id}")]
-		public async Task<IActionResult> DeleteSession(Guid id)
-		{
-			var result = await _sessionService.DeleteSession(id);
-			if (!result)
-				return NotFound();
-			return Ok();
-		}
+        [HttpGet("delete/{id}")]
+        public async Task<IActionResult> DeleteSession(Guid id)
+        {
+            var result = await _sessionService.DeleteSession(id);
+            if (!result)
+                return NotFound();
+            return Ok();
+        }
+  
+        [HttpGet("GetAll")]
 
+public async Task<ActionResult<IEnumerable<object>>> GetSessions()
+{
+    try
+    {
+        var sessions = await _sessionService.GetAllSessionsAsync(Request);
+        
+        if (sessions == null || !sessions.Any())
+        {
+            return Ok(new List<object>()); // Return empty array instead of null
+        }
+        
+        var sessionDtos = sessions.Select(session => new 
+        {
+            id = session.Id,
+            title = session.Id
+        }).ToList(); // Force evaluation with ToList()
+        
+        return Ok(sessionDtos);
+    }
+    catch (Exception ex)
+    {
+        // Log the exception if you have logging
+        return StatusCode(500, new { error = "An error occurred retrieving sessions" });
+    }
+}
 
 
 	}
