@@ -4,9 +4,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/sidebar";
 import PageIllustration from "@/components/page-illustration";
-import { s } from "framer-motion/dist/types.d-6pKw1mTI";
+import { useRouter } from "next/navigation";
 
 export default function UploadPage() {
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoURL] = useState("");
   const [uploadType, setUploadType] = useState<"file" | "link">("file");
@@ -44,7 +45,7 @@ export default function UploadPage() {
   
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("You must be logged in to upload videos.");
+      alert("You must be logged in to upload files.");
       setLoading(false);
       return;
     }
@@ -66,7 +67,7 @@ export default function UploadPage() {
           headers: {
             "Token": token,
           },
-          body: formData, // ✅ Use FormData for files
+          body: formData, // Use FormData for files
         });
   
       } else if (uploadType === "link") {
@@ -76,8 +77,7 @@ export default function UploadPage() {
           return;
         }
   
-        // TODO: (Rana) use the global API_URL variable
-        response = await fetch("http://localhost:5218/api/videos/upload", {
+        response = await fetch("http://localhost:5218/api/upload/video", {
           method: "POST",
           mode: "cors",
           headers: {
@@ -89,19 +89,30 @@ export default function UploadPage() {
       }
   
       console.log("Response Status:", response.status);
-      const responseBody = await response.json();
-      console.log("Response Body:", responseBody);
+      const responseData = await response.json();
+      console.log("Response Data:", responseData);
 
-      // add video id to local storage
-      const videoId = responseBody.videoId;
-      console.log("Video ID:", videoId);
-      localStorage.setItem("videoId", videoId);
-  
       if (!response.ok) {
-        throw new Error(responseBody.message || "Upload failed.");
+        throw new Error(responseData.message || "Upload failed.");
       }
   
-      alert("Upload successful!");
+      // Extract session ID from the response
+      const sessionId = responseData.history?.id || responseData.sessionId;
+      const videoId = responseData.video?.id || responseData.videoId;
+
+      console.log("Session ID:", sessionId);
+      
+      // Store the session ID in localStorage
+      if (sessionId) {
+        localStorage.setItem("currentSessionId", sessionId);
+      }
+      
+      // Only redirect if we have a valid session ID
+      if (sessionId) {
+        router.push(`/summarization`);
+      } else {
+        throw new Error("No session ID received from server");
+      }
   
     } catch (error) {
       console.error("Fetch Error:", error);
@@ -212,13 +223,20 @@ export default function UploadPage() {
                 </div>
               )}
 
+              {errorMessage && (
+                <div className="text-red-400 text-sm mt-2">
+                  {errorMessage}
+                </div>
+              )}
+
               <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="w-full bg-indigo-600 text-white rounded-lg py-2 hover:bg-indigo-700 transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                disabled={loading}
+                className={`w-full ${loading ? 'bg-gray-500' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-lg py-2 transition-all`}
                 onClick={handleUpload}
               >
-                 Upload
+                {loading ? 'Uploading...' : 'Upload'}
               </motion.button>
             </motion.form>
           </motion.div>

@@ -24,7 +24,7 @@ export default function Sidebar() {
         </h2>
 
         <nav className="w-full flex flex-col mt-10 space-y-4">
-          <NavItem href="/" icon={<Home size={24} />} text="Home" isOpen={isSidebarOpen} />
+          <NavItem href="/upload" icon={<Home size={24} />} text="Home" isOpen={isSidebarOpen} />
           <NavItem href="/summarization" icon={<FileText size={24} />} text="Summarize" isOpen={isSidebarOpen} />
           <NavItem href="/chatbot" icon={<MessageSquare size={24} />} text="Chatbot" isOpen={isSidebarOpen} />
           <NavItem href="/" icon={<LogOut size={24} />} text="Log out" isOpen={isSidebarOpen} />  
