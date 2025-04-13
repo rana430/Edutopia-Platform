@@ -74,6 +74,15 @@ namespace Edutopia.Controllers
                 return NotFound();
             return Ok();
         }
+
+        public String GetTitle(String text)
+        {
+            // Split the text into words
+            var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            // Return the first 4 words joined by a space, or the entire text if it has fewer than 4 words
+            return string.Join(" ", words.Take(4));
+        }
   
         [HttpGet("GetAll")]
 
@@ -87,11 +96,14 @@ public async Task<ActionResult<IEnumerable<object>>> GetSessions()
         {
             return Ok(new List<object>()); // Return empty array instead of null
         }
+
+        string title = "";
+        
         
         var sessionDtos = sessions.Select(session => new 
         {
             id = session.Id,
-            title = session.Id
+            title = session.created.ToString()//GetTitle(session.summrizedtxt == null ? "": session.summrizedtxt)
         }).ToList(); // Force evaluation with ToList()
         
         return Ok(sessionDtos);

@@ -11,6 +11,6 @@ namespace Edutopia.Models.DTOs.Session
 		public string? usr_msgs;
 		public string? ai_response;
 		public string? summrizedtxt;
-
+        public DateTime? created;
 	}
 }

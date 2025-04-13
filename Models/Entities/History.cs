@@ -11,8 +11,8 @@ namespace Edutopia.Models.Entities
 		public Guid? VideoId { get; set; }
 		public string? User_Message { get; set; }
 		public string? response { get; set; }
-		public DateTime Created { get; set; }
-		public Document? Document { get; set; }
+		public DateTime Created { get; set; } = DateTime.UtcNow;
+        public Document? Document { get; set; }
 		public User User { get; set; }
 		public Video? Video { get; set; }
 	}
