@@ -129,6 +129,37 @@
         }
       }
     },
+    "/api/Chat/c": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Session/{id}": {
       "get": {
         "tags": [
@@ -175,6 +206,38 @@
         }
       }
     },
+    "/api/Session/GetAll": {
+      "get": {
+        "tags": [
+          "Session"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": { }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/upload/video": {
       "post": {
         "tags": [
@@ -201,24 +264,7 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/SesseionResponseDTO"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SesseionResponseDTO"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SesseionResponseDTO"
-                }
-              }
-            }
+            "description": "OK"
           }
         }
       }
@@ -314,59 +360,6 @@
   },
   "components": {
     "schemas": {
-      "Document": {
-        "required": [
-          "filePath",
-          "fileType",
-          "historyId",
-          "status",
-          "title"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "historyId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "maxLength": 255,
-            "minLength": 1,
-            "type": "string"
-          },
-          "filePath": {
-            "maxLength": 500,
-            "minLength": 1,
-            "type": "string"
-          },
-          "fileType": {
-            "maxLength": 100,
-            "minLength": 1,
-            "type": "string"
-          },
-          "summarization": {
-            "type": "string",
-            "nullable": true
-          },
-          "extractedText": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "status": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
       "ForgotPasswordDTO": {
         "required": [
           "email"
@@ -392,6 +385,20 @@
             "nullable": true
           },
           "password": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryDTO": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
             "type": "string",
             "nullable": true
           }
@@ -431,75 +438,6 @@
           "newPassword": {
             "type": "string",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "SesseionResponseDTO": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "document": {
-            "$ref": "#/components/schemas/Document"
-          },
-          "video": {
-            "$ref": "#/components/schemas/Video"
-          }
-        },
-        "additionalProperties": false
-      },
-      "Video": {
-        "required": [
-          "diagramExtractionStatus",
-          "historyId",
-          "status",
-          "summerizationStatus",
-          "videoUrl"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "historyId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "videoUrl": {
-            "maxLength": 500,
-            "minLength": 1,
-            "type": "string"
-          },
-          "status": {
-            "maxLength": 500,
-            "minLength": 1,
-            "type": "string"
-          },
-          "summerization": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "diagramExtractionStatus": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "summerizationStatus": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "diagramCount": {
-            "type": "integer",
-            "format": "int32"
           }
         },
         "additionalProperties": false

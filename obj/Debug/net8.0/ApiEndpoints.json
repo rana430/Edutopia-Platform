@@ -64,6 +64,22 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "Edutopia.Controllers.ChatController",
+    "Method": "GetResponse",
+    "RelativePath": "api/Chat/c",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "queryDto",
+        "Type": "Edutopia.Models.DTOs.NewFolder.QueryDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Edutopia.Controllers.SessionController",
     "Method": "GetSession",
     "RelativePath": "api/Session/{id}",
@@ -94,6 +110,26 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Edutopia.Controllers.SessionController",
+    "Method": "GetSessions",
+    "RelativePath": "api/Session/GetAll",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   },
   {
     "ContainingType": "Edutopia.Controllers.UploadController",
@@ -130,17 +166,7 @@
         "IsRequired": true
       }
     ],
-    "ReturnTypes": [
-      {
-        "Type": "Edutopia.Models.DTOs.Session.SesseionResponseDTO",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
+    "ReturnTypes": []
   },
   {
     "ContainingType": "Edutopia.Controllers.VideoController",

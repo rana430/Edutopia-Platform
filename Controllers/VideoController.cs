@@ -73,6 +73,7 @@ namespace Edutopia.Controllers
         {
             try
             {
+                Console.WriteLine(id);
                 var detected_objects = await _videoStatus.GetVideoDiagrams(id);
 
                 foreach( var i in detected_objects)

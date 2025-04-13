@@ -45,13 +45,16 @@ namespace Edutopia.Services
         {
             try
             {
-                var video = await _applicationDBContext.Videos.FindAsync(videoId);
+                var session = await _applicationDBContext.History.FindAsync(videoId);
+                Video video = null;
+                if (session != null)
+                    video = await _applicationDBContext.Videos.FindAsync(session.VideoId);
                 if (video == null)
                 {
                     return new DiagramResponse { message = "No Video for this ID exists" };
                 }
 
-                var url = $"{_diagramsModelUrl}/get_results/{videoId}";
+                var url = $"{_diagramsModelUrl}/get_results/{video.Id}";
                 _logger.LogInformation("Requesting video status from URL: {Url}", url);
 
                 var response = await _httpClient.GetAsync(url);
@@ -127,7 +130,10 @@ namespace Edutopia.Services
         {
             try
             {
-                var video = await _applicationDBContext.Videos.FindAsync(videoId);
+                var session = await _applicationDBContext.History.FindAsync(videoId);
+                Video video = null;
+                if (session != null)
+                    video = await _applicationDBContext.Videos.FindAsync(session.VideoId);
                 if (video == null)
                     return new List<Diagram>(); // Return an empty list instead of null
 

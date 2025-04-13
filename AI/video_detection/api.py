@@ -11,7 +11,7 @@ sys.path.append(str(charts_cv_path))
 # Define project paths
 PROJECT_ROOT = project_root.parent  # Go up one more level to Edutopia root
 MODELS_DIR = project_root / 'AI_GP' / 'models'
-OUTPUT_DIR = PROJECT_ROOT / 'uploads' / 'detected_objects'
+OUTPUT_DIR = PROJECT_ROOT.parent / 'Frontend' / 'Edutopia-frontend' / 'public' / 'images' / 'uploads' / 'detected_objects'
 
 # Print the path for debugging
 print(f"Added to sys.path: {charts_cv_path}")
