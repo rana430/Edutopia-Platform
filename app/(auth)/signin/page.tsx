@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
+import { motion } from "framer-motion";
+
 const API_URL = "http://localhost:5218/api";
 
 export default function SignIn() {
@@ -11,6 +14,7 @@ export default function SignIn() {
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const router = useRouter();
 
@@ -54,14 +58,13 @@ export default function SignIn() {
 
       if (response.ok) {
         const token = response.headers.get("Token") || response.headers.get("token");
-      if (token) {
-        localStorage.setItem("token", token);
-        console.log("Token stored:", token);
-        router.push("/upload"); // Redirect on success
-      } else {
-        console.log("No token found in response headers");
-      }
-        
+        if (token) {
+          localStorage.setItem("token", token);
+          console.log("Token stored:", token);
+          router.push("/chatbot");
+        } else {
+          console.log("No token found in response headers");
+        }
       } else {
         setErrorMessage(data.message || "Invalid credentials");
       }
@@ -77,13 +80,28 @@ export default function SignIn() {
     <section>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="py-12 md:py-20">
-          <div className="pb-12 text-center">
+          <motion.div 
+            className="pb-12 text-center"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <h1 className="text-3xl font-semibold text-white md:text-4xl">Welcome to Edutopia</h1>
-          </div>
+          </motion.div>
 
-          <form className="mx-auto max-w-[400px]" onSubmit={handleSignIn}>
+          <motion.form 
+            className="mx-auto max-w-[400px]" 
+            onSubmit={handleSignIn}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="space-y-5">
-              <div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
                 <label className="mb-1 block text-sm font-medium text-indigo-200/65" htmlFor="email">
                   Email
                 </label>
@@ -96,9 +114,13 @@ export default function SignIn() {
                   onChange={handleEmailChange}
                 />
                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-              </div>
+              </motion.div>
 
-              <div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
                 <div className="mb-1 flex items-center justify-between gap-3">
                   <label className="block text-sm font-medium text-indigo-200/65" htmlFor="password">
                     Password
@@ -107,41 +129,66 @@ export default function SignIn() {
                     Forgot?
                   </Link>
                 </div>
-                <input
-                  id="password"
-                  type="password"
-                  className="form-input w-full border p-2 rounded-md bg-gray-800 text-white"
-                  placeholder="Your password"
-                  value={password}
-                  onChange={handlePasswordChange}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="form-input w-full border p-2 rounded-md bg-gray-800 text-white pr-10"
+                    placeholder="Your password"
+                    value={password}
+                    onChange={handlePasswordChange}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
                 {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
-              </div>
+              </motion.div>
             </div>
 
-            {errorMessage && <p className="text-red-500 text-sm mt-4">{errorMessage}</p>}
+            {errorMessage && (
+              <motion.p 
+                className="text-red-500 text-sm mt-4"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {errorMessage}
+              </motion.p>
+            )}
 
             <div className="mt-6 space-y-5">
-              <button
+              <motion.button
                 type="submit"
                 className={`btn w-full bg-indigo-600 text-white rounded-md py-2 ${loading ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
                 disabled={loading || !email || !password || !!errors.email || !!errors.password}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 {loading ? "Signing in..." : "Sign in"}
-              </button>
+              </motion.button>
 
               <div className="flex items-center gap-3 text-center text-sm italic text-gray-600 before:h-px before:flex-1 before:bg-gray-400/25 after:h-px after:flex-1 after:bg-gray-400/25">
                 or
               </div>
             </div>
-          </form>
+          </motion.form>
 
-          <div className="mt-6 text-center text-sm text-indigo-200/65">
+          <motion.div 
+            className="mt-6 text-center text-sm text-indigo-200/65"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
             Don't have an account?{" "}
-            <Link className="font-medium text-indigo-500" href="/signup">
+            <Link className="font-medium text-indigo-500 hover:text-indigo-400 transition-colors" href="/signup">
               Sign Up
             </Link>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
