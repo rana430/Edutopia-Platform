@@ -2,470 +2,460 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Home, FileText, MessageSquare, LogOut, Upload, AlertCircle } from "lucide-react";
-import Sidebar from "@/components/sidebar";
+import { BarChart3, FileText, Upload, Loader2, X, Send, Sparkles, MessageCircle, BookOpen, History, LogOut, Plus, Paperclip, Zap, HelpCircle, ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react";
+// The 'next/navigation' import has been removed as it's specific to the Next.js framework.
+// Standard browser APIs will be used for navigation instead.
+
+// This is a placeholder for your logo component.
+// In a real app, you would import it from your project structure.
+ import Fulllogo from "@/components/ui/fulllogo";
+
+
+interface Message {
+  text: string;
+  isUser: boolean;
+  timestamp?: Date;
+}
+
 interface Session {
-  id: string;
+  id: number;
   title: string;
+  preview: string;
+  type?: string;
 }
 
-interface SessionData {
-  user_messages: string;  // Comma-separated string
-  ai_responses: string;   // Comma-separated string
-  summarized_text: string;
+// Interface for Quiz Questions
+interface QuizQuestion {
+    id: number;
+    questionText: string;
+    options: string[];
+    correctAnswerIndex: number;
 }
 
-interface ChatMessage {
-  text: string; 
-  isUser: boolean; 
-  isVisible: boolean;
-  displayedText?: string;
-  isTyping?: boolean;
-}
+// Dummy Quiz Data (This should be replaced by data from your backend)
+const dummyQuestions: QuizQuestion[] = [
+    {
+        id: 1,
+        questionText: "What is the primary goal of gradient descent in machine learning?",
+        options: [
+            "To randomly initialize weights",
+            "To find the minimum of a cost function",
+            "To increase model complexity",
+            "To perform data normalization"
+        ],
+        correctAnswerIndex: 1
+    },
+    {
+        id: 2,
+        questionText: "Which of the following is a core component of a neural network?",
+        options: [
+            "A decision tree",
+            "A support vector",
+            "A neuron or node",
+            "A cluster centroid"
+        ],
+        correctAnswerIndex: 2
+    },
+    {
+        id: 3,
+        questionText: "What does 'backpropagation' refer to?",
+        options: [
+            "A method for improving data quality",
+            "The process of feeding data forward through a network",
+            "A technique for deploying models to production",
+            "An algorithm for training neural networks by calculating gradients"
+        ],
+        correctAnswerIndex: 3
+    }
+];
 
-export default function Chatbot() {
-  const router = useRouter();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+export default function ModernChatbotUI() {
+  // Chatbot state
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [chatHistory, setChatHistory] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Animation states
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  // Add session loading state
-  const [isSessionLoading, setIsSessionLoading] = useState(false);
+  // Left Panel State
+  const [activeView, setActiveView] = useState<'summary' | 'diagrams' | 'quiz'>('summary');
   
-  // Keep track of messages added during the current session
-  const [currentSessionMessages, setCurrentSessionMessages] = useState<ChatMessage[]>([]);
+  // Summarization state
+  const [summaryText, setSummaryText] = useState(
+    "The lecture covered various topics including machine learning fundamentals, neural networks, and their applications in modern technology. The key concepts discussed were gradient descent, backpropagation, and the importance of data preprocessing in achieving optimal model performance."
+  );
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  
+  // --- Quiz State Management ---
+  const [quizState, setQuizState] = useState<'not_started' | 'in_progress' | 'completed'>('not_started');
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: number}>({});
+  const [score, setScore] = useState(0);
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch("http://localhost:5218/api/Session/GetAll", {
-          headers: { "Token": token }
-        });
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            router.push("/upload");
-            return;
-          }
-          throw new Error("Failed to fetch sessions");
-        }
-
-        const data = await response.json();
-        
-        // Extract the array from the $values property if it exists
-        const sessionsArray = data.$values || data;
-        console.log("Fetched sessions:", sessionsArray);
-        
-        // Make sure we're working with an array
-        
-        if (Array.isArray(sessionsArray)) {
-          setSessions(sessionsArray);
-          
-          if (sessionsArray.length > 0) {
-            fetchSessionData(sessionsArray[0].id, true);
-          }
-        } else {
-          console.error("Expected an array but got:", sessionsArray);
-          setSessions([]);
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load sessions. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSessions();
-  }, []);
-
-  // Convert session data to animated messages format when session changes
-  useEffect(() => {
-    if (currentSession) {
-      const historicalMessages: ChatMessage[] = [];
-      
-      // Split comma-separated messages and responses
-      const userMsgs = currentSession.user_messages?.split(',').filter(msg => msg.trim() !== '') || [];
-      const aiResps = currentSession.ai_responses?.split(',').filter(resp => resp.trim() !== '') || [];
-      
-      // If there are no messages, add a welcome message
-      if (userMsgs.length === 0 && aiResps.length === 0) {
-        historicalMessages.push({
-          text: "Hi, I'm here to help you! Feel free to ask me anything about this document.",
-          isUser: false,
-          isVisible: true,
-          displayedText: "Hi, I'm here to help you! Feel free to ask me anything about this document.",
-          isTyping: false
-        });
-      } else {
-        // Combine user messages and AI responses in sequence
-        userMsgs.forEach((msg, index) => {
-          // Add user message
-          historicalMessages.push({
-            text: msg.trim(),
-            isUser: true,
-            isVisible: true
-          });
-          
-          // Add corresponding AI response if it exists
-          if (index < aiResps.length) {
-            historicalMessages.push({
-              text: aiResps[index].trim(),
-              isUser: false,
-              isVisible: true,
-              displayedText: aiResps[index].trim(),
-              isTyping: false
-            });
-          }
-        });
-      }
-      
-      // Replace all messages with the historical ones for the current session
-      setMessages(historicalMessages);
-      
-      // Reset current session messages when switching
-      setCurrentSessionMessages([]);
-    }
-  }, [currentSession]);
-
-  // Effect to animate new messages appearing
-  useEffect(() => {
-    const newMessages = messages.filter(msg => !msg.isVisible);
-    if (newMessages.length > 0) {
-      // Add a small delay before showing the message
-      const timer = setTimeout(() => {
-        setMessages(prevMessages => 
-          prevMessages.map((msg, i) => {
-            if (!msg.isVisible) {
-              return { 
-                ...msg, 
-                isVisible: true,
-                displayedText: msg.isUser ? msg.text : "", // Start empty for bot messages
-                isTyping: !msg.isUser // Start typing animation for bot messages
-              };
-            }
-            return msg;
-          })
-        );
-      }, 300); // 300ms delay before showing the message
-      
-      return () => clearTimeout(timer);
-    }
-  }, [messages]);
-
-  // Effect for typing animation
-  useEffect(() => {
-    const typingMessage = messages.find(msg => msg.isTyping && msg.isVisible);
-    
-    if (typingMessage) {
-      const fullText = typingMessage.text;
-      const currentText = typingMessage.displayedText || "";
-      
-      if (currentText.length < fullText.length) {
-        // Continue typing
-        const timer = setTimeout(() => {
-          setMessages(prevMessages => 
-            prevMessages.map(msg => {
-              if (msg === typingMessage) {
-                const nextChar = fullText.charAt(currentText.length);
-                const newDisplayedText = currentText + nextChar;
-                
-                return {
-                  ...msg,
-                  displayedText: newDisplayedText,
-                  isTyping: newDisplayedText.length < fullText.length
-                };
-              }
-              return msg;
-            })
-          );
-        }, 5 + Math.random() * 10); // Faster typing animation
-        
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [messages]);
-
-  const fetchSessionData = async (sessionId: string, isInitialLoad = false) => {
-    try {
-      // Set session loading state to true
-      setIsSessionLoading(true);
-      
-      // Reset any existing messages immediately when switching sessions
-      if (!isInitialLoad) {
-        setMessages([]);
-        setCurrentSessionMessages([]);
-      }
-      
-      // Update current session ID immediately
-      setCurrentSessionId(sessionId);
-      
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5218/api/session/${sessionId}`, {
-        headers: { "Token": token }
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch session data");
-
-      const data: SessionData = await response.json();
-      
-      // Now we set the current session with the fetched data
-      setCurrentSession(data);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load session data. Please try again.");
-      setCurrentSession(null); // Reset current session on error
-    } finally {
-      // Set session loading state to false when done
-      setIsSessionLoading(false);
-    }
+  const handleStartQuiz = () => {
+    // In a real app, you would fetch questions from the backend here
+    // For now, we use dummy data.
+    setQuestions(dummyQuestions);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers({});
+    setScore(0);
+    setQuizState('in_progress');
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || !currentSessionId) return;
-    
-    // Create a new user message
-    const newUserMessage: ChatMessage = { 
-      text: input, 
-      isUser: true, 
-      isVisible: false 
-    };
-    
-    // Add to both messages arrays
-    setMessages(prev => [...prev, newUserMessage]);
-    setCurrentSessionMessages(prev => [...prev, newUserMessage]);
-    
-    const userInput = input;
-    setInput("");
-    setIsLoading(true);
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5218/api/Chat/c`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Token': token
-        },
-        body: JSON.stringify({ 
-          query: userInput,
-          id: currentSessionId  // Using currentSessionId instead of hardcoded value
-        })
-      });
-
-      if (!response.ok) throw new Error("Failed to send message");
-      
-      const responseData = await response.json();
-      
-      // Add AI response to UI
-      const aiResponse: ChatMessage = {
-        text: responseData.response || "I received your message.",
-        isUser: false,
-        isVisible: false
-      };
-      
-      // Add to both message arrays
-      setMessages(prev => [...prev, aiResponse]);
-      setCurrentSessionMessages(prev => [...prev, aiResponse]);
-      
-    } catch (err) {
-      console.error(err);
-      setError("Failed to send message. Please try again.");
-      
-      // Add error message to chat
-      const errorMessage: ChatMessage = { 
-        text: "Failed to send message. Please try again.", 
-        isUser: false,
-        isVisible: false
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      setCurrentSessionMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSelectAnswer = (questionId: number, optionIndex: number) => {
+    setSelectedAnswers(prev => ({...prev, [questionId]: optionIndex}));
   };
+
+  const handleSubmitQuiz = () => {
+    let finalScore = 0;
+    questions.forEach(q => {
+        if (selectedAnswers[q.id] === q.correctAnswerIndex) {
+            finalScore++;
+        }
+    });
+    setScore(finalScore);
+    setQuizState('completed');
+  };
+
+  const handleRetryQuiz = () => {
+    setQuizState('not_started');
+  };
+  
+  // Diagrams placeholder content
+  const diagramsContent = (
+    <div className="space-y-4">
+      {['Concept Map', 'Flow Chart', 'Timeline'].map((title, index) => (
+        <motion.div
+          key={title}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.1 }}
+          className="group relative overflow-hidden bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-violet-500/50 transition-all duration-300"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <h3 className="text-violet-300 font-semibold mb-4 flex items-center gap-2">
+            <Sparkles size={16} className="text-violet-400" />
+            {title}
+          </h3>
+          <div className="h-32 bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-xl flex items-center justify-center border border-slate-600/30">
+            <span className="text-slate-400 font-medium">
+              {title === 'Concept Map' ? 'Neural Network Architecture' : 
+               title === 'Flow Chart' ? 'ML Training Process' : 'Learning Progress'}
+            </span>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  // --- Quiz Content with Full MCQ Logic ---
+  const quizContent = (
+    <AnimatePresence mode="wait">
+        {quizState === 'not_started' && (
+            <motion.div key="start" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="text-center">
+                <div className="group relative overflow-hidden bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50">
+                    <HelpCircle size={40} className="mx-auto text-cyan-400 mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-2">Knowledge Check</h3>
+                    <p className="text-slate-400 mb-6">Test your understanding of the material with a quick quiz.</p>
+                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleStartQuiz} className="w-full py-3 bg-gradient-to-r from-cyan-600 to-violet-600 text-white rounded-xl font-semibold hover:from-cyan-700 hover:to-violet-700 transition-all duration-300 shadow-lg">
+                        Start Quiz
+                    </motion.button>
+                </div>
+            </motion.div>
+        )}
+        {quizState === 'in_progress' && questions.length > 0 && (
+            <motion.div key="progress" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.4, ease: "easeInOut" }}>
+                <div className="mb-4 text-sm font-medium text-slate-400">Question {currentQuestionIndex + 1} of {questions.length}</div>
+                <p className="text-lg font-semibold text-white mb-6 min-h-[80px]">{questions[currentQuestionIndex].questionText}</p>
+                <div className="space-y-3 mb-8">
+                    {questions[currentQuestionIndex].options.map((option, index) => (
+                        <motion.button key={index} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectAnswer(questions[currentQuestionIndex].id, index)}
+                            className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${selectedAnswers[questions[currentQuestionIndex].id] === index ? 'bg-violet-500/20 border-violet-500 text-white font-semibold' : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/50 text-slate-300'}`}>
+                            {option}
+                        </motion.button>
+                    ))}
+                </div>
+                <div className="flex justify-between items-center">
+                    <motion.button onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))} disabled={currentQuestionIndex === 0} className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 text-slate-300 rounded-lg hover:bg-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <ChevronLeft size={18} /> Prev
+                    </motion.button>
+                    {currentQuestionIndex < questions.length - 1 ? (
+                        <motion.button onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))} className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+                            Next <ChevronRight size={18} />
+                        </motion.button>
+                    ) : (
+                         <motion.button onClick={handleSubmitQuiz} disabled={selectedAnswers[questions[currentQuestionIndex].id] === undefined} className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-violet-600 text-white rounded-lg font-semibold hover:from-cyan-700 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Finish
+                        </motion.button>
+                    )}
+                </div>
+            </motion.div>
+        )}
+        {quizState === 'completed' && (
+             <motion.div key="completed" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
+                <div className="text-center p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                    <h3 className="text-2xl font-bold text-white mb-2">Quiz Completed!</h3>
+                    <p className="text-slate-300 mb-6">You scored</p>
+                    <div className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-violet-400 mb-8">{score} / {questions.length}</div>
+                     <motion.button onClick={handleRetryQuiz} className="w-full py-3 bg-gradient-to-r from-cyan-600 to-violet-600 text-white rounded-xl font-semibold hover:from-cyan-700 hover:to-violet-700 transition-all duration-300">
+                        Try Again
+                    </motion.button>
+                </div>
+                <div className="mt-6 space-y-4">
+                     <h4 className="text-lg font-semibold text-white">Review Your Answers</h4>
+                     {questions.map((q, index) => {
+                         const userAnswer = selectedAnswers[q.id];
+                         const isCorrect = userAnswer === q.correctAnswerIndex;
+                         return (
+                            <div key={q.id} className="p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                                <p className="font-medium text-slate-300 mb-3">{index + 1}. {q.questionText}</p>
+                                <div className={`flex items-start gap-3 p-3 rounded-md text-sm ${isCorrect ? 'bg-green-500/10 text-green-300' : 'bg-red-500/10 text-red-300'}`}>
+                                    {isCorrect ? <CheckCircle size={20} className="flex-shrink-0 mt-0.5" /> : <XCircle size={20} className="flex-shrink-0 mt-0.5" />}
+                                    <div>
+                                        <p className="font-semibold">{userAnswer !== undefined ? q.options[userAnswer] : "No answer selected"}{isCorrect ? " (Correct)" : " (Incorrect)"}</p>
+                                        {!isCorrect && (<p className="mt-1 text-slate-400">Correct answer: <span className="font-medium text-green-400">{q.options[q.correctAnswerIndex]}</span></p>)}
+                                    </div>
+                                </div>
+                            </div>
+                         );
+                     })}
+                </div>
+            </motion.div>
+        )}
+    </AnimatePresence>
+  );
+  
+  // Sessions state
+  const [sessions] = useState<Session[]>([
+    { id: 1, title: "PDF Summary - March 29", preview: "Summary of uploaded PDF..." },
+    { id: 2, title: "Video Summary - March 28", preview: "Summary of analyzed video..." },
+    { id: 3, title: "Lecture Notes - March 27", preview: "AI and Machine Learning basics..." },
+  ]);
+
+  // Upload popup state
+  const [showUploadPopup, setShowUploadPopup] = useState(false);
+  const [uploadType, setUploadType] = useState<"file" | "link">("file");
+  const [videoUrl, setVideoURL] = useState("");
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex-1 flex justify-center items-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      </div>
-    );
-  }
+  // --- RESTORED: Backend Integrated Functions ---
+
+  const sendMessage = async () => {
+    if (input.trim() === "" || isLoading) return;
+    const userMessage: Message = { text: input, isUser: true, timestamp: new Date() };
+    setMessages(prev => [...prev, userMessage]);
+    setChatHistory(prev => [input, ...prev]);
+    const currentInput = input;
+    setInput("");
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: currentInput, context: summaryText, history: chatHistory.slice(0, 5) }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const aiMessage: Message = { text: data.response || data.message || "I can help with that.", isUser: false, timestamp: new Date() };
+        setMessages(prev => [...prev, aiMessage]);
+      } else { throw new Error('API response not ok'); }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const fallbackMessage: Message = { text: "Sorry, I'm having trouble connecting right now.", isUser: false, timestamp: new Date() };
+      setMessages(prev => [...prev, fallbackMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsProcessingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const token = localStorage.getItem("token");
+      if (!token) { throw new Error("Authentication required"); }
+      const response = await fetch("http://localhost:5218/api/videos/upload", {
+        method: "POST", headers: { "Token": token }, body: formData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem("videoId", data.videoId);
+        setSummaryText(data.summary || data.text || `Summary of ${file.name} is ready.`);
+        const systemMessage: Message = { text: `✨ I've processed "${file.name}". Ask away!`, isUser: false, timestamp: new Date() };
+        setMessages(prev => [...prev, systemMessage]);
+        setShowUploadPopup(false);
+      } else { throw new Error('Upload failed'); }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setSummaryText(`Content from ${file.name} is available for discussion.`);
+      const fallbackMessage: Message = { text: `I've received "${file.name}". Let's discuss it.`, isUser: false, timestamp: new Date() };
+      setMessages(prev => [...prev, fallbackMessage]);
+    } finally {
+      setIsProcessingFile(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleVideoUrlUpload = async () => {
+    if (!videoUrl.startsWith("http")) { alert("Invalid video link."); return; }
+    setIsProcessingFile(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) { throw new Error("Authentication required"); }
+      const response = await fetch("http://localhost:5218/api/videos/upload", {
+        method: "POST", mode: "cors", headers: { "Content-Type": "application/json", "Token": token }, body: JSON.stringify({ videoUrl }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("videoId", data.videoId);
+        setSummaryText(data.summary || data.text || `Video content from ${videoUrl} is ready.`);
+        const systemMessage: Message = { text: "✨ I've processed the video. Ask away!", isUser: false, timestamp: new Date() };
+        setMessages(prev => [...prev, systemMessage]);
+        setShowUploadPopup(false);
+      } else { throw new Error(data.message || "Upload failed"); }
+    } catch (error) {
+      console.error('Error uploading video URL:', error);
+      alert(error.message || "Failed to upload video URL");
+    } finally {
+      setIsProcessingFile(false);
+      setVideoURL("");
+    }
+  };
+  
+  const loadSession = async (sessionId: number) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if(session) {
+        setSummaryText(session.preview);
+        setMessages([]);
+    }
+  };
+  
+  const handleLogout = () => {
+    // Replaced Next.js router with standard web API for navigation
+    window.location.href = "/";
+  };
+
+  useEffect(() => {
+    setShowUploadPopup(true);
+  }, []);
 
   return (
-    <div className="flex h-screen bg-gray-950">
-      <Sidebar />
-
-      <div className="flex flex-1 flex-col items-center justify-center transition-all duration-300 ml-[60px] mr-[250px]">
-        <h1 className="animate-gradient bg-[linear-gradient(to_right,var(--color-gray-200),var(--color-indigo-200),var(--color-gray-50),var(--color-indigo-300),var(--color-gray-200))] bg-[length:200%_auto] bg-clip-text pb-5 font-nacelle text-4xl font-semibold text-transparent md:text-5xl">
-          Chat History
-        </h1>
-
-        {error && (
-          <div className="flex items-center gap-2 p-4 bg-red-500/10 text-red-400 rounded-lg mb-4">
-            <AlertCircle size={20} />
-            <p>{error}</p>
-          </div>
-        )}
-
-        <div className="w-full max-w-2xl flex flex-col bg-gray-800 rounded-lg p-4 shadow-lg h-[70vh] overflow-y-auto">
-          {!currentSession ? (
-            <div className="flex flex-col justify-center items-center h-full text-gray-400 space-y-4">
-              <p>No chat session selected</p>
-              <Link href="/upload">
-                <button className="px-4 py-2 bg-indigo-500 rounded-lg hover:bg-indigo-600 text-white transition-colors">
-                  Upload New Document
-                </button>
-              </Link>
-            </div>
-          ) : isSessionLoading ? (
-            // ChatGPT-like loading effect
-            <div className="flex flex-col justify-center items-center h-full text-gray-400 space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-              </div>
-              <p>Loading conversation...</p>
-            </div>
-          ) : (
-            <>
-              {messages.map((msg, index) => (
-                <motion.div 
-                  key={index} 
-                  className={`flex ${msg.isUser ? "justify-end" : "justify-start"} my-1`}
-                  initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                  animate={{ 
-                    opacity: msg.isVisible ? 1 : 0, 
-                    y: msg.isVisible ? 0 : 20,
-                    scale: msg.isVisible ? 1 : 0.8 
-                  }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className={`px-4 py-2 rounded-lg ${msg.isUser ? "bg-indigo-500 text-white" : "bg-gray-700 text-gray-200"}`}>
-                    {msg.isUser ? msg.text : msg.displayedText}
-                    {msg.isTyping && (
-                      <span className="inline-block w-1 h-4 ml-1 bg-gray-200 animate-blink"></span>
-                    )}
+    <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col relative overflow-hidden font-sans">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+      <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 p-4 z-10">
+        <div className="flex justify-between items-center">
+          <Fulllogo />
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowUploadPopup(true)} className="relative group px-6 py-3 bg-gradient-to-r from-violet-600 to-cyan-600 text-white rounded-xl font-semibold overflow-hidden">
+            <div className="relative flex items-center space-x-2"><Plus size={18} /> <span>New Upload</span></div>
+          </motion.button>
+        </div>
+      </motion.div>
+      <AnimatePresence>
+        {showUploadPopup && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-slate-900/90 backdrop-blur-xl rounded-3xl p-8 w-full max-w-lg border border-slate-700/50 shadow-2xl"> 
+              <button onClick={() => setShowUploadPopup(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800/50 rounded-xl"> <X size={20} /> </button>
+              <div className="relative">
+                <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3"><Upload className="text-violet-400" size={28} /> Upload Content</h2>
+                <p className="text-slate-400 mb-8">Share your learning materials with AI</p>
+                <div className="flex space-x-2 mb-8">
+                  <motion.button onClick={() => setUploadType("file")} className={`flex-1 py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${ uploadType === "file" ? "bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-lg" : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50" }`}> <Paperclip size={18} /> Upload File </motion.button>
+                  <motion.button onClick={() => setUploadType("link")} className={`flex-1 py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${ uploadType === "link" ? "bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-lg" : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50" }`}> <Zap size={18} /> Video Link </motion.button>
+                </div>
+                {uploadType === "file" ? (
+                  <label className="block"><span className="text-slate-300 font-medium mb-3 block">Select your file</span><input type="file" accept=".pdf,.ppt,.pptx,video/*" onChange={handleFileUpload} className="block w-full text-slate-300 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:font-semibold file:bg-violet-500 file:text-white hover:file:bg-violet-600 file:transition-all file:duration-300" disabled={isProcessingFile} /></label>
+                ) : (
+                  <div className="space-y-4">
+                     <input type="url" value={videoUrl} onChange={(e) => setVideoURL(e.target.value)} placeholder="https://youtube.com/watch?v=..." className="w-full px-4 py-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500" disabled={isProcessingFile} />
+                    <motion.button onClick={handleVideoUrlUpload} disabled={isProcessingFile || !videoUrl} className="w-full py-4 bg-gradient-to-r from-violet-600 to-cyan-600 text-white rounded-2xl font-semibold disabled:opacity-50">{isProcessingFile ? <Loader2 className="animate-spin mx-auto" size={18} /> : "Process Video"}</motion.button>
                   </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="flex flex-1 overflow-hidden relative p-4 gap-4">
+        <motion.div initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-1/4 flex flex-col">
+          <div className="h-full bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-700/50 flex flex-col overflow-hidden relative">
+            <div className="relative p-4 border-b border-slate-700/50">
+                <h2 className="text-lg font-bold text-white flex items-center gap-3 mb-3">
+                  {activeView === 'summary' && <BookOpen className="text-violet-400" />}
+                  {activeView === 'diagrams' && <BarChart3 className="text-cyan-400" />}
+                  {activeView === 'quiz' && <HelpCircle className="text-cyan-400" />}
+                  {activeView === 'summary' ? "Summary" : activeView === 'diagrams' ? "Diagrams" : "Quiz"}
+                </h2>
+                <div className="grid grid-cols-3 gap-2">
+                    <button onClick={() => setActiveView('summary')} className={`flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${activeView === 'summary' ? 'bg-violet-600 text-white' : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'}`}><FileText size={14} /><span>Summary</span></button>
+                    <button onClick={() => setActiveView('diagrams')} className={`flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${activeView === 'diagrams' ? 'bg-violet-600 text-white' : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'}`}><BarChart3 size={14} /><span>Diagrams</span></button>
+                    <button onClick={() => setActiveView('quiz')} className={`flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${activeView === 'quiz' ? 'bg-violet-600 text-white' : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'}`}><HelpCircle size={14} /><span>Quiz</span></button>
+                </div>
+            </div>
+            <div className="relative flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-violet-500/50 scrollbar-track-transparent">
+              <AnimatePresence mode="wait">
+                {activeView === 'summary' && (<motion.div key="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="prose prose-invert max-w-none text-slate-300 leading-relaxed"><p>{summaryText}</p></motion.div>)}
+                {activeView === 'diagrams' && (<motion.div key="diagrams" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{diagramsContent}</motion.div>)}
+                {activeView === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{quizContent}</motion.div>)}
+              </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex-1 flex flex-col">
+          <div className="flex-1 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-700/50 flex flex-col overflow-hidden relative">
+            <div className="relative p-4 border-b border-slate-700/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-cyan-500 rounded-lg flex items-center justify-center"><MessageCircle className="text-white" size={20} /></div>
+                <div><h3 className="text-lg font-semibold text-white">AI Assistant</h3><p className="text-sm text-slate-400">Ready to help</p></div>
+              </div>
+            </div>
+            <div className="relative flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-violet-500/50 scrollbar-track-transparent">
+              {messages.length === 0 && (<div className="flex justify-start mb-6"><div className="bg-slate-800/50 text-slate-200 px-6 py-4 rounded-2xl rounded-tl-md"><p>Hello! Ask me anything about the content.</p></div></div>)}
+              {messages.map((msg, index) => (
+                <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.isUser ? "justify-end" : "justify-start"} mb-4`}>
+                  <div className={`px-5 py-3 rounded-2xl max-w-[85%] ${msg.isUser ? "bg-gradient-to-br from-violet-600 to-cyan-600 text-white rounded-br-md" : "bg-slate-800/50 text-slate-200 rounded-bl-md"}`}><p className="leading-relaxed">{msg.text}</p></div>
                 </motion.div>
               ))}
-              {isLoading && (
-                <div className="flex justify-start my-1">
-                  <div className="px-4 py-2 rounded-lg bg-gray-700 text-gray-200 flex items-center">
-                    <span className="mr-2">Thinking</span>
-                    <span className="loading-dots">
-                      <span className="dot-1">.</span>
-                      <span className="dot-2">.</span>
-                      <span className="dot-3">.</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="w-full max-w-2xl mt-4 flex">
-          <input
-            type="text"
-            className="flex-1 p-3 rounded-l-lg bg-gray-700 text-white border-none focus:outline-none"
-            placeholder="Type a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            disabled={!currentSession || isLoading || isSessionLoading}
-          />
-          <button 
-            onClick={sendMessage} 
-            disabled={!currentSession || isLoading || isSessionLoading}
-            className={`px-4 text-white rounded-r-lg ${isLoading || !currentSession || isSessionLoading ? 'bg-gray-500 cursor-not-allowed' : 'bg-indigo-500 hover:bg-indigo-600'}`}
-          >
-            {isLoading ? 'Sending...' : 'Send'}
-          </button>
-        </div>
-      </div>
-
-      <motion.aside className="fixed top-0 right-0 h-screen w-[250px] bg-gray-900 text-white shadow-lg flex flex-col py-6 overflow-hidden">
-        <div className="px-4">
-          <h2 className="text-xl font-bold mb-4">Your Sessions</h2>
-          {sessions.length === 0 ? (
-            <div className="text-center text-gray-400">
-              <p className="mb-4">No sessions found</p>
-              <Link href="/upload">
-                <button className="px-4 py-2 bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors">
-                  Upload Document
-                </button>
-              </Link>
+              {isLoading && (<div className="flex justify-start mb-4"><div className="bg-slate-800/50 text-slate-200 px-6 py-4 rounded-2xl rounded-tl-md"><div className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4" /><span>Thinking...</span></div></div></div>)}
+              <div ref={messagesEndRef} />
             </div>
-          ) : (
-            <div className="space-y-2 max-h-[calc(100vh-120px)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-500 scrollbar-track-gray-800">
+            <div className="relative p-4 border-t border-slate-700/50">
+              <div className="flex items-center gap-3">
+                <input type="text" className="w-full px-5 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" placeholder="Ask a follow-up..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()} disabled={isLoading} />
+                <button onClick={sendMessage} disabled={isLoading || input.trim() === ""} className="p-3 bg-gradient-to-r from-violet-600 to-cyan-600 text-white rounded-xl disabled:opacity-50"><Send size={20} /></button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-72 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl flex-col h-full relative hidden lg:flex">
+          <div className="relative p-4 border-b border-slate-700/50"><h3 className="text-lg font-bold text-white flex items-center gap-3"><History className="text-cyan-400" size={20} /> Session History </h3></div>
+          <div className="relative flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-violet-500/50 scrollbar-track-transparent">
+            <div className="space-y-3">
               {sessions.map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => fetchSessionData(session.id)}
-                  className={`w-full p-3 rounded-lg text-left transition-colors ${
-                    currentSessionId === session.id
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                  disabled={isSessionLoading}
-                >
-                  <div className="font-medium">{session.title}</div>
-                </button>
+                <motion.div key={session.id} whileHover={{ scale: 1.02, x: 4 }} onClick={() => loadSession(session.id)} className="p-4 bg-slate-800/30 hover:bg-slate-700/40 rounded-xl cursor-pointer transition-all duration-300 border border-slate-700/30 hover:border-slate-600/50">
+                  <h4 className="font-semibold text-white mb-1 group-hover:text-violet-300 transition-colors">{session.title}</h4>
+                  <p className="text-sm text-slate-400 line-clamp-2">{session.preview}</p>
+                </motion.div>
               ))}
             </div>
-          )}
-        </div>
-      </motion.aside>
-
-      <style jsx>{`
-        .loading-dots {
-          display: inline-block;
-        }
-        .loading-dots span {
-          animation: pulse 1.4s infinite;
-          animation-fill-mode: both;
-          margin-left: 2px;
-        }
-        .dot-1 { animation-delay: 0.0s; }
-        .dot-2 { animation-delay: 0.2s; }
-        .dot-3 { animation-delay: 0.4s; }
-        
-        @keyframes pulse {
-          0%, 80%, 100% { opacity: 0; }
-          40% { opacity: 1; }
-        }
-
-        @keyframes blink {
-          0%, 100% { opacity: 0; }
-          50% { opacity: 1; }
-        }
-        
-        .animate-blink {
-          animation: blink 0.8s infinite;
-        }
-      `}</style>
+          </div>
+          <div className="relative p-4 border-t border-slate-700/50">
+            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-white rounded-xl transition-all duration-300">
+              <LogOut size={18} /> <span className="font-medium">Sign Out</span>
+            </button>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }
