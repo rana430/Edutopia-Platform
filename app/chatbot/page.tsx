@@ -24,6 +24,11 @@ interface Session {
   type?: string;
 }
 
+interface SessionData {
+  summarized_text: string;
+  title?: string;
+}
+
 // Interface for Quiz Questions
 interface QuizQuestion {
     id: number;
@@ -77,14 +82,12 @@ export default function ModernChatbotUI() {
   const [chatHistory, setChatHistory] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   // Left Panel State
   const [activeView, setActiveView] = useState<'summary' | 'diagrams' | 'quiz'>('summary');
   
   // Summarization state
-  const [summaryText, setSummaryText] = useState(
-    "The lecture covered various topics including machine learning fundamentals, neural networks, and their applications in modern technology. The key concepts discussed were gradient descent, backpropagation, and the importance of data preprocessing in achieving optimal model performance."
-  );
+  const [summaryText, setSummaryText] = useState("Summary will be displayed here.");
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   
   // --- Quiz State Management ---
@@ -124,29 +127,61 @@ export default function ModernChatbotUI() {
   };
   
   // Diagrams placeholder content
+  // Add this state for diagrams
+  const [diagrams, setDiagrams] = useState<{id: string, filePath: string}[]>([]);
+  const [isLoadingDiagrams, setIsLoadingDiagrams] = useState(false);
+  
+  // Diagrams content that displays actual diagrams
   const diagramsContent = (
     <div className="space-y-4">
-      {['Concept Map', 'Flow Chart', 'Timeline'].map((title, index) => (
-        <motion.div
-          key={title}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
-          className="group relative overflow-hidden bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-violet-500/50 transition-all duration-300"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <h3 className="text-violet-300 font-semibold mb-4 flex items-center gap-2">
-            <Sparkles size={16} className="text-violet-400" />
-            {title}
-          </h3>
-          <div className="h-32 bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-xl flex items-center justify-center border border-slate-600/30">
-            <span className="text-slate-400 font-medium">
-              {title === 'Concept Map' ? 'Neural Network Architecture' : 
-               title === 'Flow Chart' ? 'ML Training Process' : 'Learning Progress'}
-            </span>
-          </div>
-        </motion.div>
-      ))}
+      {isLoadingDiagrams ? (
+        <div className="flex justify-center items-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500"></div>
+        </div>
+      ) : diagrams.length > 0 ? (
+        diagrams.map((diagram, index) => (
+          <motion.div
+            key={diagram.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="group relative overflow-hidden bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-violet-500/50 transition-all duration-300"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <h3 className="text-violet-300 font-semibold mb-4 flex items-center gap-2">
+              <Sparkles size={16} className="text-violet-400" />
+              Diagram {index + 1}
+            </h3>
+            <div className="h-48 bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-xl flex items-center justify-center border border-slate-600/30 overflow-hidden">
+              <img 
+                src={diagram.filePath} 
+                alt={`Diagram ${index + 1}`}
+                className="object-contain max-h-full max-w-full"
+                onError={(e) => {
+                  e.currentTarget.src = "/images/placeholder-diagram.png";
+                  e.currentTarget.onerror = null;
+                }}
+              />
+            </div>
+          </motion.div>
+        ))
+      ) : (
+        ['No diagrams available'].map((title, index) => (
+          <motion.div
+            key={title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="group relative overflow-hidden bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 transition-all duration-300"
+          >
+            <div className="h-32 bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-xl flex items-center justify-center border border-slate-600/30">
+              <span className="text-slate-400 font-medium">
+                {title}
+              </span>
+            </div>
+          </motion.div>
+        ))
+      )}
     </div>
   );
 
@@ -282,12 +317,20 @@ export default function ModernChatbotUI() {
       formData.append('file', file);
       const token = localStorage.getItem("token");
       if (!token) { throw new Error("Authentication required"); }
-      const response = await fetch("http://localhost:5218/api/videos/upload", {
+      const response = await fetch("http://localhost:5218/api/upload/document", {
         method: "POST", headers: { "Token": token }, body: formData,
       });
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem("videoId", data.videoId);
+        // Extract session ID from the response
+        const sessionId = data.history?.id || data.sessionId;
+
+        console.log("Session ID:", sessionId);
+        
+        // Store the session ID in localStorage
+        if (sessionId) {
+          localStorage.setItem("currentSessionId", sessionId);
+        }
         setSummaryText(data.summary || data.text || `Summary of ${file.name} is ready.`);
         const systemMessage: Message = { text: `✨ I've processed "${file.name}". Ask away!`, isUser: false, timestamp: new Date() };
         setMessages(prev => [...prev, systemMessage]);
@@ -310,23 +353,171 @@ export default function ModernChatbotUI() {
     try {
       const token = localStorage.getItem("token");
       if (!token) { throw new Error("Authentication required"); }
-      const response = await fetch("http://localhost:5218/api/videos/upload", {
-        method: "POST", mode: "cors", headers: { "Content-Type": "application/json", "Token": token }, body: JSON.stringify({ videoUrl }),
+      
+      // Step 1 & 2: Send video URL to backend
+      const response = await fetch("http://localhost:5218/api/upload/video", {
+        method: "POST", 
+        mode: "cors", 
+        headers: { "Content-Type": "application/json", "Token": token }, 
+        body: JSON.stringify({ videoUrl }),
       });
+
+      console.log("uploaded");
+      
+      // Step 3: Handle the response from backend
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem("videoId", data.videoId);
-        setSummaryText(data.summary || data.text || `Video content from ${videoUrl} is ready.`);
-        const systemMessage: Message = { text: "✨ I've processed the video. Ask away!", isUser: false, timestamp: new Date() };
+         // Extract session ID from the response
+        const sessionId = data.history?.id || data.sessionId;
+        const videoId = data.video?.id || data.videoId;
+        
+        // Store the session ID in localStorage
+        if (sessionId) {
+          localStorage.setItem("currentSessionId", sessionId.toString());
+          
+          // Step 4: Request summarization
+          try {
+            const token = localStorage.getItem("token");
+            // add 10 seconds delay
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            const response = await fetch(`http://localhost:5218/api/session/${sessionId}`, {
+              headers: { "Token": token }
+            });
+      
+            if (!response.ok) {
+              throw new Error("Failed to fetch session data");
+            }
+      
+            const data: SessionData = await response.json();
+            console.log(data);
+            
+            // Parse the summarized_text as it's a JSON string
+            let summaryContent = "No summary available for this document.";
+            if (data.summarized_text) {
+              try {
+                const parsedSummary = JSON.parse(data.summarized_text);
+                let analysisText = parsedSummary.analysis || parsedSummary.text || parsedSummary;
+                
+                // Format the text: convert **text** to bold using Markdown
+                analysisText = analysisText
+                  // Replace ** with proper bold markdown
+                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  // Preserve headers (###)
+                  .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+                  // Preserve bullet points
+                  .replace(/\* (.*?)(\n|$)/g, '<li>$1</li>')
+                  // Wrap bullet point lists in ul tags
+                  .replace(/<li>(.*?)(<\/li>\n*)+/g, '<ul><li>$1</li>$2</ul>');
+                
+                summaryContent = analysisText;
+              } catch (e) {
+                // If parsing fails, use the raw text
+                summaryContent = data.summarized_text;
+              }
+            }
+            
+            setSummaryText(summaryContent);
+            setCurrentSessionId(sessionId);
+            // This console.log will show the old value due to state update timing
+            // The updated value will be reflected in the next render
+            console.log("Current summary:", summaryText);
+            console.log(data.summarized_text);
+            
+            // Update localStorage with current session
+            localStorage.setItem("currentSessionId", sessionId);
+          } catch (err) {
+            console.error(err);
+            setSummaryText("Error loading summary. Please try again.");
+          }
+        }
+
+        
+        // Add system message
+        const systemMessage: Message = { 
+          text: "✨ I've processed the video. Ask away!", 
+          isUser: false, 
+          timestamp: new Date() 
+        };
         setMessages(prev => [...prev, systemMessage]);
         setShowUploadPopup(false);
-      } else { throw new Error(data.message || "Upload failed"); }
+      } else { 
+        throw new Error(data.message || "Upload failed"); 
+      }
     } catch (error) {
       console.error('Error uploading video URL:', error);
       alert(error.message || "Failed to upload video URL");
     } finally {
       setIsProcessingFile(false);
       setVideoURL("");
+    }
+  };
+
+  const fetchDiagrams = async (sessionId: string) => {
+    try {
+      setIsLoadingDiagrams(true);
+  
+      // Call your backend endpoint to get diagrams
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+      
+      const response = await fetch(`http://localhost:5218/api/video/${sessionId}/diagrams`, {
+        headers: { "Token": token }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch diagrams from backend");
+      }
+      
+      const data = await response.json();
+      
+      // Parse the nested structure and extract diagrams from $values
+      const diagramsArray = data.diagrams?.$values || [];
+      
+      // Map the diagrams to the correct format with web-accessible paths
+      const parsedDiagrams = diagramsArray.map(diagram => ({
+        id: diagram.id,
+        filePath: diagram.filePath.replace('F:\\GP\\Frontend\\Edutopia-frontend\\public', '').replace(/\\/g, '/')
+      }));
+      
+      setDiagrams(parsedDiagrams);
+      console.log("Diagrams:", parsedDiagrams);
+    } catch (err) {
+      console.error("Error fetching diagrams:", err);
+      alert("Failed to load diagrams. Please try again.");
+      setDiagrams([]);
+    } finally {
+      setIsLoadingDiagrams(false);
+    }
+  };
+
+  const extractDiagrams = async () => {
+    try {
+      setIsLoadingDiagrams(true);
+      const sessionId = localStorage.getItem("currentSessionId");
+      const token = localStorage.getItem("token");
+
+      if (!sessionId || !token) {
+        throw new Error("Session ID or token missing");
+      }
+
+      // Check diagrams status
+      const statusResponse = await fetch(`http://localhost:5218/api/video/${sessionId}/diagrams/status`, {
+        headers: { "Token": token }
+      });
+      
+      if (!statusResponse.ok) {
+        throw new Error("Failed to check diagram status");
+      }
+
+      // Fetch diagrams after checking status
+      await fetchDiagrams(sessionId);
+      setIsLoadingDiagrams(false);
+
+    } catch (err) {
+      console.error(err);
+      setIsLoadingDiagrams(false);
     }
   };
   
@@ -404,8 +595,38 @@ export default function ModernChatbotUI() {
             </div>
             <div className="relative flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-violet-500/50 scrollbar-track-transparent">
               <AnimatePresence mode="wait">
-                {activeView === 'summary' && (<motion.div key="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="prose prose-invert max-w-none text-slate-300 leading-relaxed"><p>{summaryText}</p></motion.div>)}
-                {activeView === 'diagrams' && (<motion.div key="diagrams" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{diagramsContent}</motion.div>)}
+                {activeView === 'summary' && (
+                  <motion.div 
+                    key="summary" 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }} 
+                    className="prose prose-invert max-w-none text-slate-300 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: summaryText }}
+                  />
+                )}
+                {activeView === 'diagrams' && (
+                  <motion.div 
+                    key="diagrams" 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex justify-center mb-6">
+                        <button
+                          onClick={() => {
+                            extractDiagrams();
+                          }}
+                          className="px-6 py-3 bg-gradient-to-r from-violet-600 to-cyan-600 text-white rounded-xl font-semibold hover:from-violet-700 hover:to-cyan-700 transition-all duration-300 shadow-lg"
+                        >
+                          {isLoadingDiagrams ? 'Loading...' : 'View Diagrams'}
+                        </button>
+                      </div>
+                      {diagramsContent}
+                    </div>
+                  </motion.div>
+                )}
                 {activeView === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{quizContent}</motion.div>)}
               </AnimatePresence>
             </div>
