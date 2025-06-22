@@ -88,8 +88,14 @@ To buid
 >> # Activate it
 >> .\venv\Scripts\activate
 
+
+// to run the digram extraction
 pip install -r requirements.txt
 pip install ultralytics
 pip install flask python-dotenv opencv-python ultralytics yt-dlp moviepy torch torchvision
 cd video_detection    
+python api.py
+
+// to run summerization 
+cd transcript_analysis 
 python api.py

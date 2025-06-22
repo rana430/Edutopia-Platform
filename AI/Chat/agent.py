@@ -434,7 +434,7 @@ def process_query(query: str):
         print("Workflow completed successfully!")
         
         # Return both thoughts and final answer
-        return f"Agent's Thoughts:\n{final_state['thoughts']}\n\nFinal Answer:\n{final_state['final_answer']}"
+        return f"{final_state['final_answer']}"
     except Exception as e:
         print(f"Error occurred during processing: {str(e)}")
         return f"Error processing query: {str(e)}"

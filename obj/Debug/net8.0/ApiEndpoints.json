@@ -81,6 +81,32 @@
   },
   {
     "ContainingType": "Edutopia.Controllers.SessionController",
+    "Method": "GetTitle",
+    "RelativePath": "api/Session",
+    "HttpMethod": "",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "text",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.String",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Edutopia.Controllers.SessionController",
     "Method": "GetSession",
     "RelativePath": "api/Session/{id}",
     "HttpMethod": "GET",

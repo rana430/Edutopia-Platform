@@ -54,8 +54,8 @@ namespace Edutopia.Controllers
                 "application/json"
             );
 
-            var response = await _httpClient.PostAsync(ApiUrl, content);
-            response.EnsureSuccessStatusCode();
+            //var response = await _httpClient.PostAsync(ApiUrl, content);
+            //response.EnsureSuccessStatusCode();
             var returndto = new
             {
                 summarized_text = session.summrizedtxt,

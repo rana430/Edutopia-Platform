@@ -1,8 +1,8 @@
 import os
 import sys
-from pathlib import Path
 import json
 import logging
+from pathlib import Path
 from flask import Flask, request, jsonify
 from langchain_groq import ChatGroq
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -15,34 +15,24 @@ from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 
-# Load environment variables
-load_dotenv()
+# Initialize Flask app
+app = Flask(__name__)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Initialize resources
 os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
-
-# Load the Groq API key
-try:
-    groq_api_key = os.environ['GROQ_API_KEY']
-except KeyError:
-    logger.error("GROQ_API_KEY environment variable not set")
-    sys.exit(1)
-
-# Flask app initialization
-app = Flask(__name__)
-
-# Initialize resources with error handling
-try:
-    embeddings = HuggingFaceEmbeddings()
-    # Updated to use the recommended model
-    llm = ChatGroq(groq_api_key=groq_api_key, model_name="llama-3.3-70b-versatile", temperature=0)
-except Exception as e:
-    logger.error(f"Failed to initialize resources: {str(e)}")
-    sys.exit(1)
+embeddings = HuggingFaceEmbeddings()
+llm = ChatGroq(
+    groq_api_key=os.getenv('GROQ_API_KEY'),
+    model_name="llama-3.3-70b-versatile",
+    temperature=0
+)
 
 def get_youtube_video_id(url):
     """Extract video ID from YouTube URL."""
@@ -53,10 +43,10 @@ def get_youtube_video_id(url):
         if parsed_url.hostname in ('youtube.com', 'www.youtube.com'):
             query_params = parse_qs(parsed_url.query)
             return query_params.get('v', [None])[0]
+        return None
     except Exception as e:
         logger.error(f"Error parsing URL: {str(e)}")
         return None
-    return None
 
 def get_video_transcript(video_id):
     """Get transcript for a YouTube video."""
@@ -92,13 +82,15 @@ def process_transcript_with_rag(transcript):
     """Process the transcript using RAG."""
     try:
         # Split the transcript into chunks
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200
+        )
         documents = text_splitter.create_documents([transcript])
 
         # Create vector store
         vectors = Chroma.from_documents(documents, embeddings)
 
-        # Create prompt template for comprehensive analysis
         prompt = ChatPromptTemplate.from_template(
             """
             Based on the video transcript provided in the context, please provide a comprehensive analysis including:
@@ -133,85 +125,90 @@ def process_transcript_with_rag(transcript):
         retriever = vectors.as_retriever()
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
-        # Get similar chunks for context
-        docs_with_scores = vectors.similarity_search_with_score(
-            "What are the main points and key concepts discussed in this video?",
-            k=5
-        )
-
-        # Get the analysis
         response = retrieval_chain.invoke({
-            "input": "Please provide a detailed analysis of the video content."
+            "input": "Please analyze this video content"
         })
 
         return {
             'analysis': response['answer'],
             'relevant_sections': [
-                {
-                    'content': doc.page_content,
-                    'relevance_score': float(score)
-                } for doc, score in docs_with_scores
+                {'content': doc.page_content} 
+                for doc in vectors.similarity_search("summary", k=3)
             ]
         }
 
     except Exception as e:
-        logger.error(f"Error in RAG processing: {str(e)}")
+        logger.error(f"RAG processing error: {str(e)}")
         return None
 
 @app.route('/process_video', methods=['POST'])
 def process_video():
-    """
-    API endpoint to process video content.
-    Expects a JSON payload with the 'video_url' field.
-    """
-    try:
-        logger.info("Received video processing request")
-        data = request.json
-        if not data:
-            logger.error("No JSON data received")
-            return jsonify({'error': 'No JSON data received'}), 400
-            
-        if 'video_url' not in data:
-            logger.error("Missing video_url field in request")
-            return jsonify({'error': 'Invalid request, "video_url" field is required'}), 400
+    """API endpoint to process video content."""
+    # Check if request has JSON data
+    if not request.is_json:
+        return jsonify({
+            'error': 'Invalid content type',
+            'message': 'Content-Type must be application/json',
+            'example': {'video_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'}
+        }), 400
 
-        video_url = data['video_url']
-        logger.info(f"Processing video URL: {video_url}")
-        
-        # Get YouTube video ID
+    try:
+        data = request.get_json()
+    except Exception as e:
+        return jsonify({
+            'error': 'Invalid JSON',
+            'message': str(e),
+            'example': {'video_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'}
+        }), 400
+
+    # Validate required fields
+    if not data or 'video_url' not in data:
+        return jsonify({
+            'error': 'Missing field',
+            'message': 'video_url is required',
+            'example': {'video_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'}
+        }), 400
+
+    video_url = data['video_url']
+    
+    try:
         video_id = get_youtube_video_id(video_url)
         if not video_id:
-            logger.error(f"Invalid YouTube URL: {video_url}")
-            return jsonify({'error': 'Invalid YouTube URL'}), 400
+            return jsonify({
+                'error': 'Invalid URL',
+                'message': 'Could not extract video ID',
+                'example': {'video_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'}
+            }), 400
 
-        logger.info(f"Extracted video ID: {video_id}")
-
-        # Get video transcript
         transcript = get_video_transcript(video_id)
         if not transcript:
-            logger.error(f"Could not retrieve transcript for video ID: {video_id}")
-            return jsonify({'error': 'Could not retrieve video transcript'}), 400
-        logger.info("Successfully retrieved video transcript")
+            return jsonify({
+                'error': 'No transcript',
+                'message': 'Could not retrieve transcript',
+                'video_id': video_id
+            }), 400
 
-        # Process with RAG
-        rag_result = process_transcript_with_rag(transcript)
-        if not rag_result:
-            logger.error("RAG processing failed")
-            return jsonify({'error': 'Could not analyze transcript'}), 500
-        logger.info("Successfully processed transcript with RAG")
-        
-        # Format the response
-        result = {
+        result = process_transcript_with_rag(transcript)
+        if not result:
+            return jsonify({
+                'error': 'Analysis failed',
+                'message': 'Could not process transcript',
+                'video_id': video_id
+            }), 500
+
+        return jsonify({
             'success': True,
-            'analysis': rag_result['analysis']
-        }
-
-        logger.info("Successfully completed video processing")
-        return jsonify(result), 200
+            'video_id': video_id,
+            'analysis': result['analysis'],
+            'sections': result['relevant_sections']
+        }), 200
 
     except Exception as e:
-        logger.error(f"Unexpected error processing request: {str(e)}", exc_info=True)
-        return jsonify({'error': 'Internal server error'}), 500
+        logger.error(f"Processing error: {str(e)}")
+        return jsonify({
+            'error': 'Server error',
+            'message': str(e)
+        }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001, use_reloader=False)
+    app.run(host='0.0.0.0', port=5001, debug=True)
