@@ -10,6 +10,13 @@ import { BarChart3, FileText, Upload, Loader2, X, Send, Sparkles, MessageCircle,
 // In a real app, you would import it from your project structure.
  import Fulllogo from "@/components/ui/fulllogo";
 
+interface ChatMessage {
+text: string; 
+isUser: boolean; 
+isVisible: boolean;
+displayedText?: string;
+isTyping?: boolean;
+}
 
 interface Message {
   text: string;
@@ -91,20 +98,135 @@ export default function ModernChatbotUI() {
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   
   // --- Quiz State Management ---
-  const [quizState, setQuizState] = useState<'not_started' | 'in_progress' | 'completed'>('not_started');
+  const [quizState, setQuizState] = useState<'not_started' | 'selecting_type' | 'in_progress' | 'completed'>('not_started');
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: number}>({});
   const [score, setScore] = useState(0);
+  const [questionType, setQuestionType] = useState<'mcq' | 'true_false'>('mcq');
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
   const handleStartQuiz = () => {
-    // In a real app, you would fetch questions from the backend here
-    // For now, we use dummy data.
-    setQuestions(dummyQuestions);
-    setCurrentQuestionIndex(0);
-    setSelectedAnswers({});
-    setScore(0);
-    setQuizState('in_progress');
+    setQuizState('selecting_type');
+  };
+
+  const handleSelectQuestionType = async (type: 'mcq' | 'true_false') => {
+    try {
+      setQuestionType(type);
+      setIsGeneratingQuestions(true);
+      
+      // Get the current session ID and token
+      const sessionId = localStorage.getItem("currentSessionId");
+      const token = localStorage.getItem("token");
+      
+      if (!sessionId || !token) {
+        throw new Error("Session ID or token missing");
+      }
+      
+      // Fetch the summary text first
+      const sessionResponse = await fetch(`http://localhost:5218/api/session/${sessionId}`, {
+        headers: { "Token": token }
+      });
+      
+      if (!sessionResponse.ok) {
+        throw new Error("Failed to fetch session data");
+      }
+      
+      const sessionData: SessionData = await sessionResponse.json();
+      let summaryContent = sessionData.summarized_text || "No summary available";
+      
+      // Send the summary to the chatbot API to generate questions
+      const response = await fetch("http://localhost:5000/api/generate_questions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text: summaryContent,
+          type: type === 'mcq' ? 'mcq' : 'true_false'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to generate questions");
+      }
+      
+      const data = await response.json();
+      
+      // Parse the questions from the response
+      // This assumes the API returns questions in the expected format
+      // You may need to adjust this based on the actual response format
+      let parsedQuestions: QuizQuestion[] = [];
+      
+      try {
+        // Try to parse the questions from the response
+        // This is a simplified example - you'll need to adapt based on your API's response format
+        const questionLines = data.questions.split('\n\n');
+        
+        parsedQuestions = questionLines.map((questionBlock: string, index: number) => {
+          const lines = questionBlock.split('\n');
+          const questionText = lines[0].replace(/^\d+\.\s*/, '').trim();
+          
+          if (type === 'mcq') {
+            // Parse MCQ format
+            const options = lines.slice(1, 5).map(line => 
+              line.replace(/^[A-D]\)\s*/, '').trim()
+            );
+            
+            // Find the correct answer (assuming it's marked with *)
+            const correctAnswerLine = lines.find(line => line.includes('*')) || '';
+            const correctAnswerIndex = ['A)', 'B)', 'C)', 'D)'].findIndex(
+              prefix => correctAnswerLine.startsWith(prefix)
+            );
+            
+            return {
+              id: index + 1,
+              questionText,
+              options,
+              correctAnswerIndex: correctAnswerIndex !== -1 ? correctAnswerIndex : 0
+            };
+          } else {
+            // Parse True/False format
+            return {
+              id: index + 1,
+              questionText,
+              options: ['True', 'False'],
+              correctAnswerIndex: lines.find(line => 
+                line.toLowerCase().includes('answer') && line.toLowerCase().includes('true')
+              ) ? 0 : 1
+            };
+          }
+        }).filter(q => q.questionText && q.options.length > 0);
+        
+        // If parsing failed or no questions were found, use dummy questions
+        if (parsedQuestions.length === 0) {
+          console.warn("Failed to parse questions, using dummy data");
+          parsedQuestions = dummyQuestions;
+        }
+      } catch (error) {
+        console.error("Error parsing questions:", error);
+        parsedQuestions = dummyQuestions;
+      }
+      
+      setQuestions(parsedQuestions);
+      setCurrentQuestionIndex(0);
+      setSelectedAnswers({});
+      setScore(0);
+      setQuizState('in_progress');
+      
+    } catch (error) {
+      console.error("Error generating questions:", error);
+      alert("Failed to generate questions. Using sample questions instead.");
+      
+      // Fallback to dummy questions
+      setQuestions(dummyQuestions);
+      setCurrentQuestionIndex(0);
+      setSelectedAnswers({});
+      setScore(0);
+      setQuizState('in_progress');
+    } finally {
+      setIsGeneratingQuestions(false);
+    }
   };
 
   const handleSelectAnswer = (questionId: number, optionIndex: number) => {
@@ -194,12 +316,58 @@ export default function ModernChatbotUI() {
                     <HelpCircle size={40} className="mx-auto text-cyan-400 mb-4" />
                     <h3 className="text-xl font-bold text-white mb-2">Knowledge Check</h3>
                     <p className="text-slate-400 mb-6">Test your understanding of the material with a quick quiz.</p>
-                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleStartQuiz} className="w-full py-3 bg-gradient-to-r from-cyan-600 to-violet-600 text-white rounded-xl font-semibold hover:from-cyan-700 hover:to-violet-700 transition-all duration-300 shadow-lg">
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }} 
+                      whileTap={{ scale: 0.98 }} 
+                      onClick={handleStartQuiz} 
+                      className="w-full py-3 bg-gradient-to-r from-cyan-600 to-violet-600 text-white rounded-xl font-semibold hover:from-cyan-700 hover:to-violet-700 transition-all duration-300 shadow-lg"
+                    >
                         Start Quiz
                     </motion.button>
                 </div>
             </motion.div>
         )}
+        
+        {quizState === 'selecting_type' && (
+            <motion.div key="select-type" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="text-center">
+                <div className="group relative overflow-hidden bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50">
+                    <HelpCircle size={40} className="mx-auto text-cyan-400 mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-2">Select Question Type</h3>
+                    <p className="text-slate-400 mb-6">Choose the type of questions you want to answer.</p>
+                    
+                    <div className="space-y-4">
+                        <motion.button 
+                          whileHover={{ scale: 1.02 }} 
+                          whileTap={{ scale: 0.98 }} 
+                          onClick={() => handleSelectQuestionType('mcq')}
+                          disabled={isGeneratingQuestions}
+                          className="w-full py-3 bg-gradient-to-r from-cyan-600 to-violet-600 text-white rounded-xl font-semibold hover:from-cyan-700 hover:to-violet-700 transition-all duration-300 shadow-lg disabled:opacity-50"
+                        >
+                            {isGeneratingQuestions && questionType === 'mcq' ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <Loader2 size={18} className="animate-spin" /> Generating MCQs...
+                                </span>
+                            ) : 'Multiple Choice Questions'}
+                        </motion.button>
+                        
+                        <motion.button 
+                          whileHover={{ scale: 1.02 }} 
+                          whileTap={{ scale: 0.98 }} 
+                          onClick={() => handleSelectQuestionType('true_false')}
+                          disabled={isGeneratingQuestions}
+                          className="w-full py-3 bg-gradient-to-r from-cyan-600 to-violet-600 text-white rounded-xl font-semibold hover:from-cyan-700 hover:to-violet-700 transition-all duration-300 shadow-lg disabled:opacity-50"
+                        >
+                            {isGeneratingQuestions && questionType === 'true_false' ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <Loader2 size={18} className="animate-spin" /> Generating T/F Questions...
+                                </span>
+                            ) : 'True/False Questions'}
+                        </motion.button>
+                    </div>
+                </div>
+            </motion.div>
+        )}
+        
         {quizState === 'in_progress' && questions.length > 0 && (
             <motion.div key="progress" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.4, ease: "easeInOut" }}>
                 <div className="mb-4 text-sm font-medium text-slate-400">Question {currentQuestionIndex + 1} of {questions.length}</div>
@@ -228,6 +396,7 @@ export default function ModernChatbotUI() {
                 </div>
             </motion.div>
         )}
+        
         {quizState === 'completed' && (
              <motion.div key="completed" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
                 <div className="text-center p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50">
@@ -279,30 +448,95 @@ export default function ModernChatbotUI() {
   }, [messages]);
 
   // --- RESTORED: Backend Integrated Functions ---
-
+  // Keep track of messages added during the current session
+  const [currentSessionMessages, setCurrentSessionMessages] = useState<ChatMessage[]>([]);
+  // --- Chat functionality with chatbot API integration ---
   const sendMessage = async () => {
-    if (input.trim() === "" || isLoading) return;
-    const userMessage: Message = { text: input, isUser: true, timestamp: new Date() };
-    setMessages(prev => [...prev, userMessage]);
-    setChatHistory(prev => [input, ...prev]);
-    const currentInput = input;
+    if (!input.trim()) return;
+    
+    // Create a new user message
+    const newUserMessage: Message = { 
+      text: input, 
+      isUser: true,
+      timestamp: new Date()
+    };
+    
+    // Add to messages array
+    setMessages(prev => [...prev, newUserMessage]);
+    
+    const userInput = input;
     setInput("");
     setIsLoading(true);
+
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: currentInput, context: summaryText, history: chatHistory.slice(0, 5) }),
-      });
-      if (response.ok) {
+      // First, check if we have a current session
+      const sessionId = localStorage.getItem("currentSessionId");
+      
+      // If we have a session ID, use the backend chat API
+      if (sessionId) {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`http://localhost:5218/api/Chat/c`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Token': token || ''
+          },
+          body: JSON.stringify({ 
+            query: userInput,
+            id: sessionId
+          })
+        });
+
+        if (!response.ok) throw new Error("Failed to send message to backend");
+        
+        const responseData = await response.json();
+        
+        // Add AI response to UI
+        const aiResponse: Message = {
+          text: responseData.response || "I received your message.",
+          isUser: false,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, aiResponse]);
+      } 
+      // If no session ID, use the chatbot API directly
+      else {
+        // Send to chatbot API
+        const response = await fetch("http://localhost:5000/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: userInput
+          })
+        });
+        
+        if (!response.ok) throw new Error("Failed to send message to chatbot API");
+        
         const data = await response.json();
-        const aiMessage: Message = { text: data.response || data.message || "I can help with that.", isUser: false, timestamp: new Date() };
-        setMessages(prev => [...prev, aiMessage]);
-      } else { throw new Error('API response not ok'); }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      const fallbackMessage: Message = { text: "Sorry, I'm having trouble connecting right now.", isUser: false, timestamp: new Date() };
-      setMessages(prev => [...prev, fallbackMessage]);
+        
+        // Add AI response to UI
+        const aiResponse: Message = {
+          text: data.message || data.full_response || "I received your message.",
+          isUser: false,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, aiResponse]);
+      }
+    } catch (err) {
+      console.error("Error sending message:", err);
+      
+      // Add error message to chat
+      const errorMessage: Message = { 
+        text: "Failed to send message. Please try again.", 
+        isUser: false,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
