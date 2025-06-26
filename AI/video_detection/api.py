@@ -65,7 +65,7 @@ torch.serialization.add_safe_globals([
 
 # Initialize YOLO model
 try:
-    model = YOLO(str(MODELS_DIR / 'YOLOv8 fine-tuned model for object detection.pt'))
+    model = YOLO(str(MODELS_DIR / 'YOLO Final Model.pt'))
     logger.info("YOLO model loaded successfully")
 except Exception as e:
     logger.error(f"Error loading YOLO model: {str(e)}")
