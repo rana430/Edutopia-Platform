@@ -3,16 +3,22 @@ from langchain.tools import BaseTool
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, END
-from typing import Dict, TypedDict, Annotated, Sequence
+from typing import Dict, TypedDict, Annotated, Sequence, List, Any
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import Chroma
+from langchain.memory import ConversationSummaryBufferMemory
 import os
 import json
+import sqlite3
+from datetime import datetime
 
-GROQ_API_KEY = "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"
+# Suppress HuggingFace tokenizers warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+GROQ_API_KEY = "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"
 
 # Initialize LLM
 llm = ChatGroq(
@@ -24,480 +30,626 @@ llm = ChatGroq(
 # Initialize embeddings
 embeddings = HuggingFaceEmbeddings()
 
-# Global app and vectors variable
-app = None
-vectors = None
-
-# Function to initialize the app with a context string
-def load_context(context_string):
-    """
-    Initializes the global app with the provided context string.
-    
-    Args:
-        context_string (str): The context string to use for RAG
-    """
-    global app, vectors
-    
-    # Process the context string
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    final_documents = text_splitter.create_documents([context_string])
-    
-    # Initialize Chroma DB
-    vectors = Chroma.from_documents(final_documents, embeddings)
-    
-    # Create RAG chain
-    rag_prompt = ChatPromptTemplate.from_template(
-        """
-        You are a helpful assistant. Answer the question **ONLY** using the provided context. 
-        If the context does not contain relevant information, respond with:  
-        "I don't know based on the provided context."  
-          
-        Context:  
-        {context}  
-        
-        Question: {input}  
-        """
-    )
-    
-    document_chain = create_stuff_documents_chain(llm, rag_prompt)
-    retriever = vectors.as_retriever()
-    retrieval_chain = create_retrieval_chain(retriever, document_chain)
-    
-    # Define the state
-    class AgentState(TypedDict):
-        input: str
-        chat_history: Sequence[str]
-        current_step: str
-        final_answer: str
-        questions: str
-        tool_used: str
-        thoughts: str
-    
-    # Define the RAG Tool
-    class RAGTool(BaseTool):
-        name: str = "RAG Tool"
-        description: str = "Use this tool to retrieve information from the knowledge base or generate an answer using built-in knowledge."
-    
-        def _run(self, input: str) -> str:
-            try:
-                print("\nQuerying knowledge base...")
-                # Get relevant documents with scores
-                docs_with_scores = vectors.similarity_search_with_score(input, k=5)
-                
-                # Filter documents based on similarity threshold
-                relevant_docs = [doc for doc, score in docs_with_scores if score > 0.7]
-                
-                print(f"Found {len(relevant_docs)} relevant documents")
-                
-                # First try RAG response
-                print("Generating RAG-based response...")
-                response = retrieval_chain.invoke({"input": input})
-                rag_answer = response['answer']
-                
-                # If RAG doesn't know, fall back to LLM
-                if "I don't know based on the provided context" in rag_answer:
-                    print("No relevant information in RAG. Falling back to LLM knowledge...")
-                    # Create a prompt for the LLM to answer using its knowledge
-                    prompt = PromptTemplate(
-                        input_variables=["query"],
-                        template=(
-                            "You are a knowledgeable assistant. Please provide a detailed and accurate answer to this query:\n\n"
-                            "{query}\n\n"
-                            "Requirements:\n"
-                            "1. Provide accurate information\n"
-                            "2. Include technical details where relevant\n"
-                            "3. Structure the response in clear paragraphs\n"
-                            "4. Focus on providing factual information"
-                        )
-                    )
-                    final_prompt = prompt.format(query=input)
-                    llm_response = llm.invoke(final_prompt)
-                    return (
-                        "RAG System Response: I don't know based on the provided context.\n\n"
-                        "Falling back to built-in knowledge:\n"
-                        "----------------------------------------\n"
-                        f"{llm_response.content}"
-                    )
-                
-                return rag_answer
-                
-            except Exception as e:
-                error_msg = f"Error in RAG processing: {str(e)}"
-                print(f"\nError: {error_msg}")
-                return error_msg
-    
-        def _arun(self, query: str):
-            raise NotImplementedError("This tool does not support async")
-    
-    # Question Generator Tool
-    class QuestionGenerator(BaseTool):
-        name: str = "Question Generator"
-        description: str = (
-            "Generates structured questions based on the original user-provided text and question requirements. "
-            "When using this tool, the action input must be in the following format: \n\n"
-            "    <original_text> ### <question_requirements>\n\n"
-            "For example, if the user provides a detailed educational text and specific requirements, "
-            "the input should include the full original text, followed by '###', followed by the requirements. \n\n"
-            "This tool will then generate:\n"
-            "- 5 Y/N questions (each including an answer),\n"
-            "- 5 True/False questions (without answers),\n"
-            "- 5 WH questions (without answers), and\n"
-            "- 5 MCQs (each with 4 options and the correct answer).\n\n"
-            "DO NOT use any summarized or modified version of the input. Use the original text exactly as provided."
+def parse_conversation_data(user_str: str, ai_str: str) -> ConversationSummaryBufferMemory:
+    try:
+        # Initialize memory
+        memory = ConversationSummaryBufferMemory(
+            llm=llm,
+            max_token_limit=2000,
+            return_messages=True
         )
-    
-        def _run(self, input: str) -> str:
-            try:
-                print("\nStarting question generation...")
-                if "###" in input:
-                    paragraph_text, user_request = input.split("###", 1)
-                    print(f"Split input into text and request")
-                else:
-                    paragraph_text = input
-                    user_request = ("Generate 5 y/n questions with answers and 5 t/f without answers "
-                                    "and 5 wh questions without answers and 5 mcq with answers")
-                    print("Using default question request")
+        
+        # Split the strings into lists
+        user_messages = [msg.strip() for msg in user_str.split(',')]
+        ai_messages = [msg.strip() for msg in ai_str.split(',')]
+        
+        # Ensure both lists have the same length
+        if len(user_messages) != len(ai_messages):
+            print("Warning: Number of user messages does not match number of AI messages")
+            min_length = min(len(user_messages), len(ai_messages))
+            user_messages = user_messages[:min_length]
+            ai_messages = ai_messages[:min_length]
+        
+        # Save each conversation pair to memory
+        for user_msg, ai_msg in zip(user_messages, ai_messages):
+            if user_msg and ai_msg:  # Only save non-empty messages
+                memory.save_context(
+                    {"input": user_msg},
+                    {"output": ai_msg}
+                )
+        
+        return memory
+        
+    except Exception as e:
+        print(f"Error parsing conversation data: {str(e)}")
+        # Return fresh memory if parsing fails
+        return ConversationSummaryBufferMemory(
+            llm=llm,
+            max_token_limit=2000,
+            return_messages=True
+        )
+
+def load_context(context_string: str, user_str: str = None, ai_str: str = None) -> tuple:
+    try:
+        print(f"\nLoading context from provided string...")
+        print(f"Context length: {len(context_string)} characters")
+        
+        # Validate input
+        if not context_string or not context_string.strip():
+            raise ValueError("Context string cannot be empty")
+        
+        # Split text into chunks
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        final_documents = text_splitter.create_documents([context_string])
+        
+        print(f"Created {len(final_documents)} document chunks")
+        
+        # Initialize Chroma DB
+        vectors = Chroma.from_documents(final_documents, embeddings)
+        
+        # Create RAG chain
+        rag_prompt = ChatPromptTemplate.from_template(
+            """
+            You are a helpful assistant. Answer the question **ONLY** using the provided context. 
+            If the context does not contain relevant information, respond with:  
+            "I don't know based on the provided context."  
+              
+            Context:  
+            {context}  
+            
+            Question: {input}  
+            """
+        )
+        
+        document_chain = create_stuff_documents_chain(llm, rag_prompt)
+        retriever = vectors.as_retriever()
+        retrieval_chain = create_retrieval_chain(retriever, document_chain)
+        
+        print("Context loaded and processed successfully!")
+        
+        # Initialize memory with conversation history if provided
+        if user_str and ai_str:
+            print("Loading conversation history into memory...")
+            memory = parse_conversation_data(user_str, ai_str)
+        else:
+            print("Initializing fresh memory...")
+            memory = ConversationSummaryBufferMemory(
+                llm=llm,
+                max_token_limit=2000,
+                return_messages=True
+            )
+        
+        return vectors, retrieval_chain, memory
+        
+    except Exception as e:
+        print(f"Error loading context: {str(e)}")
+        raise
+
+# Example context string - replace this with your actual context
+EXAMPLE_CONTEXT = """
+Seaborn is a Python data visualization library based on matplotlib. It provides a high-level interface for drawing attractive and informative statistical graphics.
+
+Key features of Seaborn:
+1. Built-in themes for styling matplotlib graphics
+2. Visualizing univariate and bivariate distributions
+3. Plotting statistical relationships
+4. Visualizing categorical data
+5. Multi-plot grids for complex visualizations
+
+Creating bar plots in Seaborn:
+You can create bar plots using sns.barplot() function. The basic syntax is:
+sns.barplot(x='column1', y='column2', data=dataframe)
+
+Customizing colors in Seaborn:
+1. Use the 'palette' parameter: sns.barplot(palette='viridis')
+2. Use 'color' parameter for single color: sns.barplot(color='blue')
+3. Create custom palettes: sns.color_palette(['red', 'blue', 'green'])
+4. Use built-in palettes: 'deep', 'muted', 'bright', 'pastel', 'dark', 'colorblind'
+
+Statistical plotting capabilities:
+Seaborn excels at statistical visualization including regression plots, distribution plots, and categorical plots.
+"""
+
+# Load initial context and memory with string instead of file
+vectors, retrieval_chain, memory = load_context(EXAMPLE_CONTEXT)
+
+# Define the state with memory
+class AgentState(TypedDict):
+    input: str
+    current_step: str
+    final_answer: str
+    questions: str
+    tool_used: str
+    thoughts: str
+    memory: ConversationSummaryBufferMemory
+
+# Define the RAG Tool
+class RAGTool(BaseTool):
+    name: str = "RAG Tool"
+    description: str = "Use this tool to retrieve information from the knowledge base or generate an answer using built-in knowledge."
+    memory: ConversationSummaryBufferMemory = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.memory = None
+
+    def _run(self, input: str) -> str:
+        try:
+            print("\nQuerying knowledge base...")
+            # Get relevant documents with scores
+            docs_with_scores = vectors.similarity_search_with_score(input, k=5)
+            
+            # Filter documents based on similarity threshold
+            relevant_docs = [doc for doc, score in docs_with_scores if score > 0.7]
+            
+            print(f"Found {len(relevant_docs)} relevant documents")
+            
+            # First try RAG response
+            print("Generating RAG-based response...")
+            response = retrieval_chain.invoke({"input": input})
+            rag_answer = response['answer']
+            
+            # If RAG doesn't know, fall back to LLM silently
+            if "I don't know based on the provided context" in rag_answer:
+                # Get conversation history from memory if available
+                conversation_history = []
+                if self.memory:
+                    memory_variables = self.memory.load_memory_variables({})
+                    conversation_history = memory_variables.get("history", [])
                 
-                print("Creating prompt template...")
+                # Create a prompt for the LLM that includes conversation history
                 prompt = PromptTemplate(
-                    input_variables=["paragraph_text", "user_request"],
+                    input_variables=["conversation_history", "query"],
                     template=(
-                        "You are a question generator that creates structured questions based on educational text.\n\n"
-                        "Based on this text:\n\n"
-                        "{paragraph_text}\n\n"
-                        "Generate questions as per this request:\n"
-                        "{user_request}\n\n"
-                        "IMPORTANT: Return ONLY a valid JSON object with this EXACT structure:\n"
-                        "{{\n"
-                        '  "yes_no": [\n'
-                        '    {{"question": "Is pasta originally from Sicily?", "answer": "Yes"}},\n'
-                        '    // 4 more yes/no questions\n'
-                        "  ],\n"
-                        '  "true_false": [\n'
-                        '    {{"question": "Pasta was first recorded in the 15th century."}},\n'
-                        '    // 4 more true/false questions\n'
-                        "  ],\n"
-                        '  "wh_questions": [\n'
-                        '    {{"question": "When was pasta first recorded in Sicily?"}},\n'
-                        '    // 4 more wh questions\n'
-                        "  ],\n"
-                        '  "mcq": [\n'
-                        '    {{"question": "What is the origin of the word pasta?",\n'
-                        '      "options": [\n'
-                        '        "A) From Greek pastros",\n'
-                        '        "B) From Italian for dough",\n'
-                        '        "C) From Latin pasta",\n'
-                        '        "D) From Arabic pastah"\n'
-                        '      ],\n'
-                        '      "answer": "B) From Italian for dough"}},\n'
-                        '    // 4 more mcq questions\n'
-                        "  ]\n"
-                        "}}\n\n"
-                        "REQUIREMENTS:\n"
-                        "1. Return ONLY the JSON object, no other text\n"
-                        "2. Ensure all JSON keys and values are in double quotes\n"
-                        "3. Generate EXACTLY 5 questions of each type\n"
-                        "4. Follow the example format exactly\n"
-                        "5. Base all questions on the provided text only\n"
+                        "Previous conversation:\n{conversation_history}\n\n"
+                        "Current question: {query}\n\n"
+                        "Please provide a brief and concise answer that takes into account the previous conversation. "
+                        "Requirements:\n"
+                        "1. Keep the answer short and to the point\n"
+                        "2. Focus on the most important information\n"
+                        "3. Use bullet points if appropriate\n"
+                        "4. Maximum 3-4 sentences\n"
+                        "5. Reference previous conversation when relevant"
                     )
                 )
-    
-                print("Formatting prompt...")
-                final_prompt = prompt.format(paragraph_text=paragraph_text.strip(), user_request=user_request.strip())
-                print("Sending prompt to LLM...")
-                response = llm.invoke(final_prompt)
-                print("Received response from LLM")
-                
-                # Validate JSON
-                try:
-                    json.loads(response.content)
-                    return response.content
-                except json.JSONDecodeError:
-                    print("Invalid JSON received. Attempting to fix...")
-                    # Try to extract JSON from the response if it contains other text
-                    import re
-                    json_match = re.search(r'({[\s\S]*})', response.content)
-                    if json_match:
-                        json_str = json_match.group(1)
-                        # Validate the extracted JSON
-                        json.loads(json_str)
-                        return json_str
-                    raise ValueError("Could not extract valid JSON from response")
-                    
-            except Exception as e:
-                error_msg = f"Error in question generation: {str(e)}"
-                print(f"\nError: {error_msg}")
-                return error_msg
-    
-        def _arun(self, query: str):
-            raise NotImplementedError("This tool does not support async")
-    
-    # Initialize tools
-    rag_tool = RAGTool()
-    question_tool = QuestionGenerator()
-    tools = [rag_tool, question_tool]
-    
-    def plan_action(state: AgentState) -> AgentState:
-        """Plan the next action based on the input"""
-        query = state["input"].lower()
-        if "generate" in query and "questions" in query:
-            # Extract topic for question generation
-            topic = query.replace("generate", "").replace("questions", "").replace("about", "").replace("the history of", "").strip()
-            state["thoughts"] = f"I need to generate questions about {topic}. I'll use the Question Generator tool to create structured questions."
-            state["current_step"] = "planned_questions"
-        else:
-            # For RAG queries, use the original query
-            state["thoughts"] = f"This is a query about '{state['input']}'. I'll use the RAG tool to get a comprehensive answer."
-            state["current_step"] = "planned_rag"
-        return state
-    
-    def router(state: AgentState) -> Dict[str, str]:
-        """Route to the appropriate node based on the query"""
-        query = state["input"].lower()
-        if "generate" in query and "questions" in query:
-            return {"next": "generate_questions"}
-        else:
-            return {"next": "rag_query"}
-    
-    def rag_query(state: AgentState) -> AgentState:
-        """Use the RAG tool to answer the query"""
-        try:
-            state["thoughts"] += "\n\nExecuting RAG query to find relevant information..."
-            answer = rag_tool.run(state["input"])
-            state["thoughts"] += f"\n\nReceived answer from RAG system. Processing response..."
-            state["final_answer"] = answer
-            state["current_step"] = "completed"
-            state["tool_used"] = "rag"
-            return state
-        except Exception as e:
-            state["thoughts"] += f"\n\nError occurred while querying RAG system: {str(e)}"
-            state["final_answer"] = f"Error getting answer: {str(e)}"
-            state["current_step"] = "error"
-            state["tool_used"] = "rag"
-            return state
-    
-    def generate_questions(state: AgentState) -> AgentState:
-        """Generate questions using the Question Generator tool"""
-        try:
-            state["thoughts"] += "\n\nPreparing to generate questions..."
-            # Extract the topic from the query
-            query = state["input"].lower()
-            topic = query.replace("generate", "").replace("questions", "").replace("about", "").replace("the history of", "").strip()
-            
-            # First try to get information from RAG
-            state["thoughts"] += f"\n\nChecking RAG system for information about {topic}..."
-            rag_query = f"provide detailed information about {topic}"
-            rag_response = rag_tool.run(rag_query)
-            
-            # Check if RAG had relevant information
-            if "I don't know based on the provided context" in rag_response:
-                state["thoughts"] += f"\n\nNo relevant information found in RAG. Using LLM knowledge..."
-                # Create a prompt for the LLM to get information about the topic
-                info_prompt = PromptTemplate(
-                    input_variables=["topic"],
-                    template=(
-                        "Provide a detailed overview of {topic}. Include key facts, concepts, and important information. "
-                        "Focus on accuracy and comprehensiveness while being concise. "
-                        "Include both historical and current information where relevant."
-                    )
+                final_prompt = prompt.format(
+                    conversation_history="\n".join([f"{msg.type}: {msg.content}" for msg in conversation_history]) if conversation_history else "No previous conversation",
+                    query=input
                 )
-                topic_info = llm.invoke(info_prompt.format(topic=topic))
-                base_text = topic_info.content
-                state["thoughts"] += "\n\nGenerated base information using LLM knowledge."
-            else:
-                state["thoughts"] += "\n\nUsing information from RAG system."
-                base_text = rag_response
+                llm_response = llm.invoke(final_prompt)
+                return llm_response.content
             
-            state["thoughts"] += "\n\nUsing Question Generator tool to create structured questions..."
-            questions = question_tool.run(f"{base_text} ### Generate 5 questions about {topic}")
-            state["thoughts"] += "\n\nQuestions generated successfully. Moving to formatting step..."
-            state["questions"] = questions
-            state["current_step"] = "questions_generated"
-            state["tool_used"] = "questions"
-            return state
+            return rag_answer
+            
         except Exception as e:
-            state["thoughts"] += f"\n\nError occurred while generating questions: {str(e)}"
-            state["final_answer"] = f"Error generating questions: {str(e)}"
-            state["current_step"] = "error"
-            state["tool_used"] = "questions"
-            return state
-    
-    def format_final_answer(state: AgentState) -> AgentState:
-        """Format the final answer with the generated questions"""
-        if state["tool_used"] == "questions":
-            try:
-                state["thoughts"] += "\n\nFormatting the generated questions into a readable structure..."
-                questions_data = json.loads(state["questions"])
-                formatted_questions = "Here are the generated questions:\n\n"
-                
-                # Format Yes/No questions
-                formatted_questions += "Yes/No Questions:\n"
-                for q in questions_data.get("yes_no", []):
-                    formatted_questions += f"- {q['question']} (Answer: {q['answer']})\n"
-                
-                # Format True/False questions
-                formatted_questions += "\nTrue/False Questions:\n"
-                for q in questions_data.get("true_false", []):
-                    formatted_questions += f"- {q['question']}\n"
-                
-                # Format WH questions
-                formatted_questions += "\nWH Questions:\n"
-                for q in questions_data.get("wh_questions", []):
-                    formatted_questions += f"- {q['question']}\n"
-                
-                # Format MCQs
-                formatted_questions += "\nMultiple Choice Questions:\n"
-                for q in questions_data.get("mcq", []):
-                    formatted_questions += f"- {q['question']}\n"
-                    for option in q["options"]:
-                        formatted_questions += f"  {option}\n"
-                    formatted_questions += f"  Answer: {q['answer']}\n"
-                
-                state["thoughts"] += "\n\nQuestions formatted successfully. Preparing final output..."
-                state["final_answer"] = formatted_questions
-                state["current_step"] = "completed"
-                return state
-            except Exception as e:
-                state["thoughts"] += f"\n\nError occurred while formatting questions: {str(e)}"
-                state["final_answer"] = f"Error formatting questions: {str(e)}"
-                state["current_step"] = "error"
-                return state
-        else:
-            return state
-    
-    # Create the graph
-    workflow = StateGraph(AgentState)
-    
-    # Add nodes
-    workflow.add_node("plan", plan_action)  # Add planning node first
-    workflow.add_node("router", router)
-    workflow.add_node("rag_query", rag_query)
-    workflow.add_node("generate_questions", generate_questions)
-    workflow.add_node("format_answer", format_final_answer)
-    
-    # Add edges
-    workflow.add_edge("plan", "router")  # Connect plan to router
-    workflow.add_edge("rag_query", END)
-    workflow.add_edge("generate_questions", "format_answer")
-    workflow.add_edge("format_answer", END)
-    
-    # Add conditional edges
-    def should_generate_questions(state: AgentState) -> bool:
-        """Determine if we should generate questions"""
-        query = state["input"].lower()
-        return "generate" in query and "questions" in query
-    
-    workflow.add_conditional_edges(
-        "router",
-        should_generate_questions,
-        {
-            True: "generate_questions",
-            False: "rag_query"
-        }
+            error_msg = f"Error in RAG processing: {str(e)}"
+            print(f"\nError: {error_msg}")
+            return error_msg
+
+    def _arun(self, query: str):
+        raise NotImplementedError("This tool does not support async")
+
+# Question Generator Tool
+class QuestionGenerator(BaseTool):
+    name: str = "Question Generator"
+    description: str = (
+        "Generates 5 structured questions based on the original user-provided text and question requirements. "
+        "When using this tool, the action input must be in the following format: \n\n"
+        "    <original_text> ### <question_requirements>\n\n"
+        "The tool can generate different types of questions (MCQ, Y/N, T/F, WH) based on the requirements."
     )
-    
-    # Set entry point
-    workflow.set_entry_point("plan")
-    
-    # Compile the graph
-    app = workflow.compile()
-    
-    print("Application initialized with the provided context")
-    return app
+
+    def _run(self, input: str) -> str:
+        try:
+            print("\nStarting question generation...")
+            if "###" in input:
+                paragraph_text, user_request = input.split("###", 1)
+                print(f"Split input into text and request")
+            else:
+                paragraph_text = input
+                user_request = "Generate 5 questions about the topic"
+                print("Using default question request")
+            
+            # Determine question type from user request
+            question_type = "mcq"  # default
+            if "mcq" in user_request.lower():
+                question_type = "mcq"
+            elif "y/n" in user_request.lower() or "yes/no" in user_request.lower():
+                question_type = "yes_no"
+            elif "t/f" in user_request.lower() or "true/false" in user_request.lower():
+                question_type = "true_false"
+            elif "wh" in user_request.lower():
+                question_type = "wh"
+            
+            print(f"Generating {question_type} questions...")
+            
+            # Create appropriate template based on question type
+            if question_type == "mcq":
+                template = (
+                    "{{\n"
+                    '  "questions": [\n'
+                    '    {{"question": "Question 1?",\n'
+                    '      "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],\n'
+                    '      "answer": "B) Option 2"}},\n'
+                    '    // 4 more similar MCQ questions\n'
+                    "  ]\n"
+                    "}}"
+                )
+            else:
+                template = (
+                    "{{\n"
+                    '  "questions": [\n'
+                    '    {{"question": "Question 1?", "answer": "Answer 1"}},\n'
+                    '    // 4 more similar questions\n'
+                    "  ]\n"
+                    "}}"
+                )
+            
+            prompt = PromptTemplate(
+                input_variables=["paragraph_text", "user_request", "template"],
+                template=(
+                    "You are a question generator that creates structured questions based on educational text.\n\n"
+                    "Based on this text:\n\n"
+                    "{paragraph_text}\n\n"
+                    "Generate questions as per this request:\n"
+                    "{user_request}\n\n"
+                    "IMPORTANT: Return ONLY a valid JSON object with this EXACT structure:\n"
+                    "{template}\n\n"
+                    "REQUIREMENTS:\n"
+                    "1. Return ONLY the JSON object, no other text\n"
+                    "2. Ensure all JSON keys and values are in double quotes\n"
+                    "3. Generate EXACTLY 5 questions\n"
+                    "4. Follow the example format exactly\n"
+                    "5. Base all questions on the provided text only\n"
+                    "6. For MCQ questions, provide 4 options (A, B, C, D) and mark the correct answer\n"
+                )
+            )
+
+            print("Formatting prompt...")
+            final_prompt = prompt.format(
+                paragraph_text=paragraph_text.strip(),
+                user_request=user_request.strip(),
+                template=template
+            )
+            print("Sending prompt to LLM...")
+            response = llm.invoke(final_prompt)
+            print("Received response from LLM")
+            
+            # Validate JSON
+            try:
+                questions_data = json.loads(response.content)
+                # Format the output nicely
+                formatted_output = f"Here are the generated {question_type.upper()} questions:\n\n"
+                
+                if question_type == "mcq":
+                    for i, q in enumerate(questions_data["questions"], 1):
+                        formatted_output += f"{i}. {q['question']}\n"
+                        for option in q["options"]:
+                            formatted_output += f"   {option}\n"
+                        formatted_output += f"   Answer: {q['answer']}\n\n"
+                else:
+                    for i, q in enumerate(questions_data["questions"], 1):
+                        formatted_output += f"{i}. {q['question']}\n"
+                        formatted_output += f"   Answer: {q['answer']}\n\n"
+                
+                return formatted_output
+                
+            except json.JSONDecodeError:
+                print("Invalid JSON received. Attempting to fix...")
+                import re
+                json_match = re.search(r'({[\s\S]*})', response.content)
+                if json_match:
+                    json_str = json_match.group(1)
+                    json.loads(json_str)  # Validate
+                    return json_str
+                raise ValueError("Could not extract valid JSON from response")
+                
+        except Exception as e:
+            error_msg = f"Error in question generation: {str(e)}"
+            print(f"\nError: {error_msg}")
+            return error_msg
+
+    def _arun(self, query: str):
+        raise NotImplementedError("This tool does not support async")
+
+# Initialize tools
+rag_tool = RAGTool()
+question_tool = QuestionGenerator()
+tools = [rag_tool, question_tool]
+
+def plan_action(state: AgentState) -> AgentState:
+    """Plan the next action based on the input"""
+    query = state["input"].lower()
+    if "generate" in query and "questions" in query:
+        # Extract topic for question generation
+        topic = query.replace("generate", "").replace("questions", "").replace("about", "").replace("the history of", "").strip()
+        state["thoughts"] = f"I need to generate questions about {topic}. I'll use the Question Generator tool to create structured questions."
+        state["current_step"] = "planned_questions"
+    else:
+        # For RAG queries, use the original query
+        state["thoughts"] = f"This is a query about '{state['input']}'. I'll use the RAG tool to get a comprehensive answer."
+        state["current_step"] = "planned_rag"
+    return state
+
+def router(state: AgentState) -> Dict[str, str]:
+    """Route to the appropriate node based on the query"""
+    query = state["input"].lower()
+    if "generate" in query and "questions" in query:
+        return {"next": "generate_questions"}
+    else:
+        return {"next": "rag_query"}
+
+def rag_query(state: AgentState) -> AgentState:
+    """Use the RAG tool to answer the query"""
+    try:
+        state["thoughts"] += "\n\nExecuting RAG query to find relevant information..."
+        answer = rag_tool.run(state["input"])
+        state["thoughts"] += f"\n\nReceived answer from RAG system. Processing response..."
+        state["final_answer"] = answer
+        state["current_step"] = "completed"
+        state["tool_used"] = "rag"
+        return state
+    except Exception as e:
+        state["thoughts"] += f"\n\nError occurred while querying RAG system: {str(e)}"
+        state["final_answer"] = f"Error getting answer: {str(e)}"
+        state["current_step"] = "error"
+        state["tool_used"] = "rag"
+        return state
+
+def generate_questions(state: AgentState) -> AgentState:
+    """Generate questions using the Question Generator tool"""
+    try:
+        state["thoughts"] += "\n\nPreparing to generate questions..."
+        # Extract the topic from the query
+        query = state["input"].lower()
+        topic = query.replace("generate", "").replace("questions", "").replace("about", "").replace("the history of", "").strip()
+        
+        # First try to get information from RAG
+        state["thoughts"] += f"\n\nChecking RAG system for information about {topic}..."
+        rag_query = f"provide detailed information about {topic}"
+        rag_response = rag_tool.run(rag_query)
+        
+        # Check if RAG had relevant information
+        if "I don't know based on the provided context" in rag_response:
+            state["thoughts"] += f"\n\nNo relevant information found in RAG. Using LLM knowledge..."
+            # Create a prompt for the LLM to get information about the topic
+            info_prompt = PromptTemplate(
+                input_variables=["topic"],
+                template=(
+                    "Provide a detailed overview of {topic}. Include key facts, concepts, and important information. "
+                    "Focus on accuracy and comprehensiveness while being concise. "
+                    "Include both historical and current information where relevant."
+                )
+            )
+            topic_info = llm.invoke(info_prompt.format(topic=topic))
+            base_text = topic_info.content
+            state["thoughts"] += "\n\nGenerated base information using LLM knowledge."
+        else:
+            state["thoughts"] += "\n\nUsing information from RAG system."
+            base_text = rag_response
+        
+        state["thoughts"] += "\n\nUsing Question Generator tool to create structured questions..."
+        questions = question_tool.run(f"{base_text} ### Generate 5 questions about {topic}")
+        state["thoughts"] += "\n\nQuestions generated successfully. Moving to formatting step..."
+        state["questions"] = questions
+        state["current_step"] = "questions_generated"
+        state["tool_used"] = "questions"
+        return state
+    except Exception as e:
+        state["thoughts"] += f"\n\nError occurred while generating questions: {str(e)}"
+        state["final_answer"] = f"Error generating questions: {str(e)}"
+        state["current_step"] = "error"
+        state["tool_used"] = "questions"
+        return state
+
+def format_final_answer(state: AgentState) -> AgentState:
+    """Format the final answer with the generated questions"""
+    if state["tool_used"] == "questions":
+        try:
+            state["thoughts"] += "\n\nFormatting the generated questions into a readable structure..."
+            # The questions are already formatted by the QuestionGenerator
+            state["final_answer"] = state["questions"]
+            state["current_step"] = "completed"
+            return state
+        except Exception as e:
+            state["thoughts"] += f"\n\nError occurred while formatting questions: {str(e)}"
+            state["final_answer"] = f"Error formatting questions: {str(e)}"
+            state["current_step"] = "error"
+            return state
+    else:
+        return state
+
+# Create the graph
+workflow = StateGraph(AgentState)
+
+# Add nodes
+workflow.add_node("plan", plan_action)  # Add planning node first
+workflow.add_node("router", router)
+workflow.add_node("rag_query", rag_query)
+workflow.add_node("generate_questions", generate_questions)
+workflow.add_node("format_answer", format_final_answer)
+
+# Add edges
+workflow.add_edge("plan", "router")  # Connect plan to router
+workflow.add_edge("rag_query", END)
+workflow.add_edge("generate_questions", "format_answer")
+workflow.add_edge("format_answer", END)
+
+# Add conditional edges
+def should_generate_questions(state: AgentState) -> bool:
+    """Determine if we should generate questions"""
+    query = state["input"].lower()
+    return "generate" in query and "questions" in query
+
+workflow.add_conditional_edges(
+    "router",
+    should_generate_questions,
+    {
+        True: "generate_questions",
+        False: "rag_query"
+    }
+)
+
+# Set entry point
+workflow.set_entry_point("plan")
+
+# Compile the graph
+app = workflow.compile()
 
 def process_query(query: str):
     """Process a user query and return the response"""
-    global app
-    
-    if app is None:
-        return "Error: Application not initialized. Please call initialize_with_context() first."
-    
     try:
         print(f"\nProcessing query: '{query}'")
         print("Initializing agent state...")
         
-        # Initialize the state
+        # Initialize the state with existing memory
         initial_state = {
             "input": query,
-            "chat_history": [],
             "current_step": "start",
             "final_answer": "",
             "questions": "",
             "tool_used": "",
-            "thoughts": "Starting to process the query..."
+            "thoughts": "Starting to process the query...",
+            "memory": memory
         }
+        
+        # Set memory in RAG tool
+        rag_tool.memory = memory
         
         print("Running workflow...")
         # Run the workflow
         final_state = app.invoke(initial_state)
         
+        # Save to memory
+        final_state["memory"].save_context(
+            {"input": query},
+            {"output": final_state["final_answer"]}
+        )
+        
         print("Workflow completed successfully!")
         
         # Return both thoughts and final answer
-        return f"{final_state['final_answer']}"
+        return f"Agent's Thoughts:\n{final_state['thoughts']}\n\nFinal Answer:\n{final_state['final_answer']}"
     except Exception as e:
         print(f"Error occurred during processing: {str(e)}")
         return f"Error processing query: {str(e)}"
 
-# Example usage function
-def run_example():
-    """
-    Run example queries using the initialized app
-    """
-    global app
-    
-    if app is None:
-        print("Error: Application not initialized. Please call initialize_with_context() first.")
-        return
-    
+def initialize_agent_with_context(context_string: str, user_str: str = None, ai_str: str = None):
+    """Initialize or reinitialize the agent with new context and optional conversation history"""
+    global vectors, retrieval_chain, memory
+    try:
+        print("Initializing agent with new context...")
+        vectors, retrieval_chain, memory = load_context(context_string, user_str, ai_str)
+        print("Agent initialized successfully!")
+        return True
+    except Exception as e:
+        print(f"Error initializing agent: {str(e)}")
+        return False
+
+# Example usage
+if __name__ == "__main__":
     try:
         print("\nStarting agent execution...")
         
-        # Test with a question generation query
-        query = "generate 5 questions about the history of game design"  # Simplified query
-        print("\nTesting question generation:")
-        response = process_query(query)
+        # Test Case 1: Creating new memory
+        print("\n=== Test Case 1: Creating New Memory ===")
+        print("Initializing a new conversation...")
+        
+        # Test conversation with new memory
+        initial_queries = [
+            "what is seaborn? give me a short answer",
+            "how to make bar plot? keep it brief",
+            "how to change colors? short answer please"
+        ]
+        
+        # Initialize conversation strings
+        user_str = ""
+        ai_str = ""
+        
+        print("\nProcessing initial queries to create memory:")
+        for i, query in enumerate(initial_queries, 1):
+            print(f"\nQuery {i}: {query}")
+            response = process_query(query)
+            if response:
+                print("\nAgent's Process:")
+                print("-" * 50)
+                print(response)
+                print("-" * 50)
+                
+                # Update conversation strings with the new interaction
+                user_str += query + ","
+                ai_str += response.split("Final Answer:\n")[1].strip() + ","
+                
+                # Print current memory state
+                print("\nCurrent Memory State:")
+                print("-" * 50)
+                print(memory.chat_memory.messages)
+                print("-" * 50)
+            else:
+                print("No response received due to error")
+        
+        # Test Case 2: Loading existing memory and adding new conversations
+        print("\n=== Test Case 2: Loading Existing Memory and Adding New Conversations ===")
+        print("Reinitializing with previous conversation data...")
+        
+        # Reinitialize agent with conversation history
+        initialize_agent_with_context(EXAMPLE_CONTEXT, user_str, ai_str)
+        
+        # Test conversation with loaded memory
+        follow_up_queries = [
+            "can you explain more about bar plots?",
+            "generate 5 y/n questions about seaborn"
+        ]
+        
+        print("\nProcessing follow-up queries with loaded memory:")
+        for i, query in enumerate(follow_up_queries, 1):
+            print(f"\nQuery {i}: {query}")
+            response = process_query(query)
+            if response:
+                print("\nAgent's Process:")
+                print("-" * 50)
+                print(response)
+                print("-" * 50)
+                
+                # Update conversation strings with the new interaction
+                user_str += query + ","
+                ai_str += response.split("Final Answer:\n")[1].strip() + ","
+                
+                # Print current memory state
+                print("\nCurrent Memory State:")
+                print("-" * 50)
+                print(memory.chat_memory.messages)
+                print("-" * 50)
+            else:
+                print("No response received due to error")
+        
+        # Test Case 3: Verify memory persistence
+        print("\n=== Test Case 3: Verifying Memory Persistence ===")
+        print("Testing memory with a new query that references previous conversations...")
+        
+        # Reinitialize agent with updated conversation history
+        initialize_agent_with_context(EXAMPLE_CONTEXT, user_str, ai_str)
+        
+        final_query = "based on our previous discussion, what's the best way to customize a seaborn plot?"
+        print(f"\nFinal Query: {final_query}")
+        response = process_query(final_query)
+        
         if response:
             print("\nAgent's Process:")
             print("-" * 50)
             print(response)
             print("-" * 50)
-        else:
-            print("No response received due to error")
-    
-        # Test with a RAG query
-        query = "explain for me the rules of chess"
-        print("\nTesting RAG query:")
-        response = process_query(query)
-        if response:
-            print("\nAgent's Process:")
-            print("-" * 50)
-            print(response)
-            print("-" * 50)
-        else:
-            print("No response received due to error")
             
+            # Print final memory state
+            print("\nFinal Memory State:")
+            print("-" * 50)
+            print(memory.chat_memory.messages)
+            print("-" * 50)
+        else:
+            print("No response received due to error")
+        
         print("\nAll tests completed successfully!")
     except Exception as e:
         print(f"\nMain execution error: {str(e)}")
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
-
-# Example of how to use the global app
-if __name__ == "__main__":
-    # Example context string
-    sample_context = """
-    Chess is a board game played between two players. It is sometimes called Western chess or international chess to distinguish it from related games such as xiangqi and shogi. The current form of the game emerged in Southern Europe during the second half of the 15th century after evolving from chaturanga, a similar but much older game of Indian origin. Today, chess is one of the world's most popular games, played by millions of people worldwide.
-    
-    Chess is an abstract strategy game and involves no hidden information. It is played on a square chessboard with 64 squares arranged in an eight-by-eight grid. At the start, each player controls sixteen pieces: one king, one queen, two rooks, two knights, two bishops, and eight pawns. The player who controls the white pieces moves first, followed by the player controlling the black pieces. The object of the game is to checkmate the opponent's king, whereby the king is under immediate attack (in "check") and there is no way for it to escape. There are also several ways a game can end in a draw.
-    
-    Organized chess arose in the 19th century. Chess competition today is governed internationally by FIDE (International Chess Federation). The first universally recognized World Chess Champion, Wilhelm Steinitz, claimed his title in 1886; Magnus Carlsen is the current World Champion. A huge body of chess theory has developed since the game's inception. Aspects of art are found in chess composition, and chess in its turn influenced Western culture and art, and has connections with other fields such as mathematics, computer science, and psychology.
-    
-    One of the goals of early computer scientists was to create a chess-playing machine. In 1997, Deep Blue became the first computer to beat the reigning World Champion in a match when it defeated Garry Kasparov. Today's chess engines are significantly stronger than the best human players and have deeply influenced the development of chess theory.
-    """
-    
-    # Initialize the app with the sample context
-    initialize_with_context(sample_context)
-    
-    # Run the examples
-    run_example()

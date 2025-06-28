@@ -45,6 +45,8 @@ namespace Edutopia.Controllers
             var requestBody = new
             {
                 context     = context,
+                user_str=   session.usr_msgs,
+                ai_str=session.ai_response,
             };
 
             // Serialize and send the request
