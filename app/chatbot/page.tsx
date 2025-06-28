@@ -25,7 +25,7 @@ interface Message {
 }
 
 interface Session {
-  id: number;
+  id: string;
   title: string;
   preview: string;
   type?: string;
@@ -34,6 +34,8 @@ interface Session {
 interface SessionData {
   summarized_text: string;
   title?: string;
+  ai_responses?: string;
+  user_messages?: string;
 }
 
 // Interface for Quiz Questions
@@ -97,7 +99,29 @@ export default function ModernChatbotUI() {
   const [summaryText, setSummaryText] = useState("Summary will be displayed here.");
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   
-  // --- Quiz State Management ---
+  /**
+   * Formats markdown text to HTML for display in the UI
+   * 
+   * Handles the following markdown elements:
+   * - Bold text (**text**) -> <strong>text</strong>
+   * - Headers (### text) -> <h3>text</h3>
+   * - Bullet points (* text) -> <li>text</li> wrapped in <ul> tags
+   * 
+   * @param text - The markdown text to format
+   * @returns Formatted HTML string
+   */
+  const formatMarkdownText = (text: string): string => {
+    return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  // Preserve headers (###)
+                  .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+                  // Preserve bullet points
+                  .replace(/\* (.*?)(\n|$)/g, '<li>$1</li>')
+                  // Wrap bullet point lists in ul tags
+                  .replace(/<li>(.*?)(<\/li>\n*)+/g, '<ul><li>$1</li>$2</ul>');
+  };
+  
+   // --- Quiz State Management ---
   const [quizState, setQuizState] = useState<'not_started' | 'selecting_type' | 'in_progress' | 'completed'>('not_started');
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -142,10 +166,12 @@ export default function ModernChatbotUI() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          text: summaryContent,
+          text: summaryText,
           type: type === 'mcq' ? 'mcq' : 'true_false'
         })
       });
+
+      console.log(response);
       
       if (!response.ok) {
         throw new Error("Failed to generate questions");
@@ -432,11 +458,8 @@ export default function ModernChatbotUI() {
   );
   
   // Sessions state
-  const [sessions] = useState<Session[]>([
-    { id: 1, title: "PDF Summary - March 29", preview: "Summary of uploaded PDF..." },
-    { id: 2, title: "Video Summary - March 28", preview: "Summary of analyzed video..." },
-    { id: 3, title: "Lecture Notes - March 27", preview: "AI and Machine Learning basics..." },
-  ]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
   // Upload popup state
   const [showUploadPopup, setShowUploadPopup] = useState(false);
@@ -564,15 +587,19 @@ export default function ModernChatbotUI() {
         // Store the session ID in localStorage
         if (sessionId) {
           localStorage.setItem("currentSessionId", sessionId);
+          setCurrentSessionId(sessionId);
+          
+          // Fetch sessions to update the sidebar
+          await fetchSessions();
         }
-        setSummaryText(data.summary || data.text || `Summary of ${file.name} is ready.`);
+        setSummaryText(formatMarkdownText(data.summary || data.text || `Summary of ${file.name} is ready.`));
         const systemMessage: Message = { text: `✨ I've processed "${file.name}". Ask away!`, isUser: false, timestamp: new Date() };
         setMessages(prev => [...prev, systemMessage]);
         setShowUploadPopup(false);
       } else { throw new Error('Upload failed'); }
     } catch (error) {
       console.error('Error uploading file:', error);
-      setSummaryText(`Content from ${file.name} is available for discussion.`);
+      setSummaryText(formatMarkdownText(`Content from ${file.name} is available for discussion.`));
       const fallbackMessage: Message = { text: `I've received "${file.name}". Let's discuss it.`, isUser: false, timestamp: new Date() };
       setMessages(prev => [...prev, fallbackMessage]);
     } finally {
@@ -608,15 +635,23 @@ export default function ModernChatbotUI() {
         // Store the session ID in localStorage
         if (sessionId) {
           localStorage.setItem("currentSessionId", sessionId.toString());
+          setCurrentSessionId(sessionId);
+          
+          // Fetch sessions to update the sidebar
+          await fetchSessions();
           
           // Step 4: Request summarization
           try {
             const token = localStorage.getItem("token");
             // add 10 seconds delay
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            await new Promise(resolve => setTimeout(resolve, 11000));
             const response = await fetch(`http://localhost:5218/api/session/${sessionId}`, {
-              headers: { "Token": token }
-            });
+               method: 'GET',
+               headers: { 
+                 "Token": token,
+                 "Content-Type": "application/json"
+               }
+             });
       
             if (!response.ok) {
               throw new Error("Failed to fetch session data");
@@ -632,36 +667,25 @@ export default function ModernChatbotUI() {
                 const parsedSummary = JSON.parse(data.summarized_text);
                 let analysisText = parsedSummary.analysis || parsedSummary.text || parsedSummary;
                 
-                // Format the text: convert **text** to bold using Markdown
-                analysisText = analysisText
-                  // Replace ** with proper bold markdown
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  // Preserve headers (###)
-                  .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
-                  // Preserve bullet points
-                  .replace(/\* (.*?)(\n|$)/g, '<li>$1</li>')
-                  // Wrap bullet point lists in ul tags
-                  .replace(/<li>(.*?)(<\/li>\n*)+/g, '<ul><li>$1</li>$2</ul>');
-                
-                summaryContent = analysisText;
+                // Format the text using our helper function
+                summaryContent = formatMarkdownText(analysisText);
               } catch (e) {
-                // If parsing fails, use the raw text
-                summaryContent = data.summarized_text;
+                // If parsing fails, use the raw text with formatting
+                summaryContent = formatMarkdownText(data.summarized_text);
               }
             }
             
             setSummaryText(summaryContent);
-            setCurrentSessionId(sessionId);
+            // Current session ID is already set above
             // This console.log will show the old value due to state update timing
             // The updated value will be reflected in the next render
             console.log("Current summary:", summaryText);
             console.log(data.summarized_text);
             
-            // Update localStorage with current session
-            localStorage.setItem("currentSessionId", sessionId);
+            // Current session ID is already set earlier in the function
           } catch (err) {
             console.error(err);
-            setSummaryText("Error loading summary. Please try again.");
+            setSummaryText("Error loading summary. Please try again.");  // No need to format error messages
           }
         }
 
@@ -672,7 +696,7 @@ export default function ModernChatbotUI() {
           isUser: false, 
           timestamp: new Date() 
         };
-        setMessages(prev => [...prev, systemMessage]);
+        setMessages(prev => [systemMessage]);
         setShowUploadPopup(false);
       } else { 
         throw new Error(data.message || "Upload failed"); 
@@ -755,11 +779,82 @@ export default function ModernChatbotUI() {
     }
   };
   
-  const loadSession = async (sessionId: number) => {
-    const session = sessions.find(s => s.id === sessionId);
-    if(session) {
-        setSummaryText(session.preview);
-        setMessages([]);
+  const loadSession = async (sessionId: string) => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+      
+      const response = await fetch(`http://localhost:5218/api/session/${sessionId}`, {
+        headers: { "Token": token }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch session data");
+      }
+      
+      const sessionData: SessionData = await response.json();
+      
+      // Set the current session ID
+      setCurrentSessionId(sessionId);
+      localStorage.setItem("currentSessionId", sessionId);
+      
+      // Parse and format the summary text
+      let formattedSummary = "No summary available";
+      if (sessionData.summarized_text) {
+        try {
+          // Try to parse as JSON first
+          const parsedSummary = JSON.parse(sessionData.summarized_text);
+          const analysisText = parsedSummary.analysis || parsedSummary.text || parsedSummary;
+          formattedSummary = formatMarkdownText(analysisText);
+        } catch (e) {
+          // If parsing fails, use the raw text with formatting
+          formattedSummary = formatMarkdownText(sessionData.summarized_text);
+        }
+      }
+      
+      // Display the formatted summary
+      setSummaryText(formattedSummary);
+      
+      // Parse and display messages
+      const newMessages: Message[] = [];
+      
+      if (sessionData.user_messages && sessionData.ai_responses) {
+        const userMsgs = sessionData.user_messages.split(',');
+        const aiMsgs = sessionData.ai_responses.split(',');
+        
+        // Interleave user and AI messages
+        const maxLength = Math.max(userMsgs.length, aiMsgs.length);
+        
+        for (let i = 0; i < maxLength; i++) {
+          if (i < userMsgs.length && userMsgs[i].trim()) {
+            newMessages.push({
+              text: userMsgs[i].trim(),
+              isUser: true,
+              timestamp: new Date()
+            });
+          }
+          
+          if (i < aiMsgs.length && aiMsgs[i].trim()) {
+            newMessages.push({
+              text: aiMsgs[i].trim(),
+              isUser: false,
+              timestamp: new Date()
+            });
+          }
+        }
+      }
+      
+      setMessages(newMessages);
+      
+    } catch (error) {
+      console.error("Error loading session:", error);
+      alert("Failed to load session. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -768,8 +863,78 @@ export default function ModernChatbotUI() {
     window.location.href = "/";
   };
 
+  // Fetch sessions from API
+  const fetchSessions = async () => {
+    try {
+      setIsLoadingSessions(true);
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+      
+      const response = await fetch("http://localhost:5218/api/session/GetAll", {
+        headers: { "Token": token }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch sessions");
+      }
+      
+      const sessionsData = await response.json();
+
+      console.log('Sessions data:', sessionsData);
+      
+      // Transform the data to match our Session interface
+      let formattedSessions: Session[] = [];
+      
+      // Check if sessionsData is an array
+      if (Array.isArray(sessionsData)) {
+        formattedSessions = sessionsData.map((session: any) => ({
+          id: session.id.toString(),
+          title: session.title || `Session ${session.id}`,
+          preview: session.preview || "No preview available"
+        }));
+      } 
+      // Check if sessionsData has a property that contains the array
+      else if (sessionsData && typeof sessionsData === 'object') {
+        // Try common response formats
+        const sessionsArray = sessionsData.sessions || 
+                             sessionsData.data || 
+                             sessionsData.items || 
+                             sessionsData.results || 
+                             (sessionsData.$values ? sessionsData.$values : null);
+                             
+        if (Array.isArray(sessionsArray)) {
+          formattedSessions = sessionsArray.map((session: any) => ({
+            id: session.id.toString(),
+            title: session.title || `Session ${session.id}`,
+            preview: session.preview || "No preview available"
+          }));
+        } else {
+          console.error('Sessions data is not in expected format:', sessionsData);
+        }
+      }
+      
+      setSessions(formattedSessions);
+      return formattedSessions; // Return the sessions for promise chaining
+      
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+      return []; // Return empty array in case of error
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
+
   useEffect(() => {
-    setShowUploadPopup(true);
+    // Fetch sessions when component mounts
+    fetchSessions().then((fetchedSessions) => {
+      // Only show upload popup if there are no sessions
+      if (fetchedSessions.length === 0) {
+        setShowUploadPopup(true);
+      }
+    });
   }, []);
 
   return (
@@ -893,16 +1058,39 @@ export default function ModernChatbotUI() {
           </div>
         </motion.div>
         <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-72 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl flex-col h-full relative hidden lg:flex">
-          <div className="relative p-4 border-b border-slate-700/50"><h3 className="text-lg font-bold text-white flex items-center gap-3"><History className="text-cyan-400" size={20} /> Session History </h3></div>
-          <div className="relative flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-violet-500/50 scrollbar-track-transparent">
-            <div className="space-y-3">
-              {sessions.map((session) => (
-                <motion.div key={session.id} whileHover={{ scale: 1.02, x: 4 }} onClick={() => loadSession(session.id)} className="p-4 bg-slate-800/30 hover:bg-slate-700/40 rounded-xl cursor-pointer transition-all duration-300 border border-slate-700/30 hover:border-slate-600/50">
-                  <h4 className="font-semibold text-white mb-1 group-hover:text-violet-300 transition-colors">{session.title}</h4>
-                  <p className="text-sm text-slate-400 line-clamp-2">{session.preview}</p>
-                </motion.div>
-              ))}
+          <div className="relative p-4 border-b border-slate-700/50">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white flex items-center gap-3"><History className="text-cyan-400" size={20} /> Session History </h3>
+              <button onClick={fetchSessions} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all">
+                <Loader2 className={isLoadingSessions ? "animate-spin" : ""} size={18} />
+              </button>
             </div>
+          </div>
+          <div className="relative flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-violet-500/50 scrollbar-track-transparent">
+            {isLoadingSessions ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500"></div>
+              </div>
+            ) : sessions.length > 0 ? (
+              <div className="space-y-3">
+                {sessions.map((session) => (
+                  <motion.div 
+                    key={session.id} 
+                    whileHover={{ scale: 1.02, x: 4 }} 
+                    onClick={() => loadSession(session.id)} 
+                    className={`p-4 ${currentSessionId === session.id ? 'bg-violet-600/20 border-violet-500/50' : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/40 hover:border-slate-600/50'} rounded-xl cursor-pointer transition-all duration-300 border`}
+                  >
+                    <h4 className="font-semibold text-white mb-1 group-hover:text-violet-300 transition-colors">{session.title}</h4>
+                    <p className="text-sm text-slate-400 line-clamp-2">{session.preview}</p>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-slate-400">No sessions found</p>
+                <p className="text-sm text-slate-500 mt-2">Upload content to create a new session</p>
+              </div>
+            )}
           </div>
           <div className="relative p-4 border-t border-slate-700/50">
             <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-white rounded-xl transition-all duration-300">
