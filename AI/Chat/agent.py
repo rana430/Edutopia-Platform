@@ -78,16 +78,43 @@ def load_context(context_string: str, user_str: str = None, ai_str: str = None) 
         if not context_string or not context_string.strip():
             raise ValueError("Context string cannot be empty")
         
+        # CLEAR ALL PREVIOUS RESOURCES
+        # Clear global variables if they exist
+        global vectors, retrieval_chain, memory
+        
+        # Clear Chroma DB if it exists (this will remove all documents and embeddings)
+        if 'vectors' in globals() and vectors is not None:
+            try:
+                print("Clearing existing vector store...")
+                # Get the Chroma collection and clear it
+                vectors.delete_collection()
+                vectors = None
+            except Exception as e:
+                print(f"Error clearing vector store: {str(e)}")
+        
+        # Clear retrieval chain
+        if 'retrieval_chain' in globals() and retrieval_chain is not None:
+            print("Clearing existing retrieval chain...")
+            retrieval_chain = None
+        
+        # Clear memory
+        if 'memory' in globals() and memory is not None:
+            print("Clearing existing memory...")
+            memory = None
+        
         # Split text into chunks
+        print("Creating new text chunks...")
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         final_documents = text_splitter.create_documents([context_string])
         
         print(f"Created {len(final_documents)} document chunks")
         
-        # Initialize Chroma DB
+        # Initialize new Chroma DB
+        print("Initializing new vector store...")
         vectors = Chroma.from_documents(final_documents, embeddings)
         
-        # Create RAG chain
+        # Create new RAG chain
+        print("Creating new retrieval chain...")
         rag_prompt = ChatPromptTemplate.from_template(
             """
             You are a helpful assistant. Answer the question **ONLY** using the provided context. 
@@ -107,17 +134,35 @@ def load_context(context_string: str, user_str: str = None, ai_str: str = None) 
         
         print("Context loaded and processed successfully!")
         
-        # Initialize memory with conversation history if provided
+        # Initialize a fresh memory
+        print("Initializing fresh memory...")
+        memory = ConversationSummaryBufferMemory(
+            llm=llm,
+            max_token_limit=2000,
+            return_messages=True
+        )
+        
+        # Then add conversation history if provided
         if user_str and ai_str:
             print("Loading conversation history into memory...")
-            memory = parse_conversation_data(user_str, ai_str)
-        else:
-            print("Initializing fresh memory...")
-            memory = ConversationSummaryBufferMemory(
-                llm=llm,
-                max_token_limit=2000,
-                return_messages=True
-            )
+            # Parse and add conversation data to the fresh memory
+            user_messages = [msg.strip() for msg in user_str.split(',')]
+            ai_messages = [msg.strip() for msg in ai_str.split(',')]
+            
+            # Ensure both lists have the same length
+            if len(user_messages) != len(ai_messages):
+                print("Warning: Number of user messages does not match number of AI messages")
+                min_length = min(len(user_messages), len(ai_messages))
+                user_messages = user_messages[:min_length]
+                ai_messages = ai_messages[:min_length]
+            
+            # Save each conversation pair to memory
+            for user_msg, ai_msg in zip(user_messages, ai_messages):
+                if user_msg and ai_msg:  # Only save non-empty messages
+                    memory.save_context(
+                        {"input": user_msg},
+                        {"output": ai_msg}
+                    )
         
         return vectors, retrieval_chain, memory
         
@@ -258,8 +303,6 @@ class QuestionGenerator(BaseTool):
                 question_type = "yes_no"
             elif "t/f" in user_request.lower() or "true/false" in user_request.lower():
                 question_type = "true_false"
-            elif "wh" in user_request.lower():
-                question_type = "wh"
             
             print(f"Generating {question_type} questions...")
             
@@ -331,6 +374,8 @@ class QuestionGenerator(BaseTool):
                     for i, q in enumerate(questions_data["questions"], 1):
                         formatted_output += f"{i}. {q['question']}\n"
                         formatted_output += f"   Answer: {q['answer']}\n\n"
+
+                print(formatted_output)
                 
                 return formatted_output
                 
@@ -529,7 +574,7 @@ def process_query(query: str):
         print("Workflow completed successfully!")
         
         # Return both thoughts and final answer
-        return f"Agent's Thoughts:\n{final_state['thoughts']}\n\nFinal Answer:\n{final_state['final_answer']}"
+        return f"{final_state['final_answer']}"
     except Exception as e:
         print(f"Error occurred during processing: {str(e)}")
         return f"Error processing query: {str(e)}"
