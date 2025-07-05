@@ -17,8 +17,12 @@ from datetime import datetime
 
 # Suppress HuggingFace tokenizers warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-GROQ_API_KEY = "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"
+# Load the Groq API key
+try:
+    groq_api_key = os.environ['GROQ_API_KEY']
+except KeyError:
+    logger.error("GROQ_API_KEY environment variable not set")
+    sys.exit(1)
 
 # Initialize LLM
 llm = ChatGroq(
