@@ -18,11 +18,7 @@ displayedText?: string;
 isTyping?: boolean;
 }
 
-interface Message {
-  text: string;
-  isUser: boolean;
-  timestamp?: Date;
-}
+// Message interface has been replaced by ChatMessage
 
 interface Session {
   id: string;
@@ -30,6 +26,7 @@ interface Session {
   preview: string;
   type?: string;
 }
+
 
 interface SessionData {
   summarized_text: string;
@@ -86,18 +83,22 @@ const dummyQuestions: QuizQuestion[] = [
 
 export default function ModernChatbotUI() {
   // Chatbot state
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [chatHistory, setChatHistory] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
   // Left Panel State
   const [activeView, setActiveView] = useState<'summary' | 'diagrams' | 'quiz'>('summary');
   
   // Summarization state
   const [summaryText, setSummaryText] = useState("Summary will be displayed here.");
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  
+  // Keep track of messages added during the current session
+  const [currentSessionMessages, setCurrentSessionMessages] = useState<ChatMessage[]>([]);
   
   /**
    * Formats markdown text to HTML for display in the UI
@@ -110,16 +111,14 @@ export default function ModernChatbotUI() {
    * @param text - The markdown text to format
    * @returns Formatted HTML string
    */
-  const formatMarkdownText = (text: string): string => {
-    return text
+ const formatMarkdownText = (text: string): string => {
+  return text
+    .replace(/\n/g, '<br>') // Convert newlines to HTML line breaks
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  // Preserve headers (###)
-                  .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
-                  // Preserve bullet points
-                  .replace(/\* (.*?)(\n|$)/g, '<li>$1</li>')
-                  // Wrap bullet point lists in ul tags
-                  .replace(/<li>(.*?)(<\/li>\n*)+/g, '<ul><li>$1</li>$2</ul>');
-  };
+    .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+    .replace(/\* (.*?)(\n|$)/g, '<li>$1</li>')
+    .replace(/<li>(.*?)(<\/li>\n*)+/g, '<ul><li>$1</li>$2</ul>');
+};
   
    // --- Quiz State Management ---
   const [quizState, setQuizState] = useState<'not_started' | 'selecting_type' | 'in_progress' | 'completed'>('not_started');
@@ -471,21 +470,20 @@ export default function ModernChatbotUI() {
   }, [messages]);
 
   // --- RESTORED: Backend Integrated Functions ---
-  // Keep track of messages added during the current session
-  const [currentSessionMessages, setCurrentSessionMessages] = useState<ChatMessage[]>([]);
   // --- Chat functionality with chatbot API integration ---
   const sendMessage = async () => {
     if (!input.trim()) return;
     
     // Create a new user message
-    const newUserMessage: Message = { 
+    const newUserMessage: ChatMessage = { 
       text: input, 
       isUser: true,
-      timestamp: new Date()
+      isVisible: true
     };
     
-    // Add to messages array
+    // Add to messages array and current session messages
     setMessages(prev => [...prev, newUserMessage]);
+    setCurrentSessionMessages(prev => [...prev, newUserMessage]);
     
     const userInput = input;
     setInput("");
@@ -514,14 +512,20 @@ export default function ModernChatbotUI() {
         
         const responseData = await response.json();
         
+        // Format the AI response text with markdown formatting
+        const formattedResponseText = formatMarkdownText(responseData.response || "I received your message.");
+        
         // Add AI response to UI
-        const aiResponse: Message = {
-          text: responseData.response || "I received your message.",
+        const aiResponse: ChatMessage = {
+          text: formattedResponseText,
           isUser: false,
-          timestamp: new Date()
+          isVisible: true,
+          displayedText: formattedResponseText,
+          isTyping: false
         };
         
         setMessages(prev => [...prev, aiResponse]);
+        setCurrentSessionMessages(prev => [...prev, aiResponse]);
       } 
       // If no session ID, use the chatbot API directly
       else {
@@ -540,26 +544,33 @@ export default function ModernChatbotUI() {
         
         const data = await response.json();
         
+        // Format the AI response text with markdown formatting
+        const formattedResponseText = formatMarkdownText(data.message || data.full_response || "I received your message.");
+        
         // Add AI response to UI
-        const aiResponse: Message = {
-          text: data.message || data.full_response || "I received your message.",
+        const aiResponse: ChatMessage = {
+          text: formattedResponseText,
           isUser: false,
-          timestamp: new Date()
+          isVisible: true,
+          displayedText: formattedResponseText,
+          isTyping: false
         };
         
         setMessages(prev => [...prev, aiResponse]);
+        setCurrentSessionMessages(prev => [...prev, aiResponse]);
       }
     } catch (err) {
       console.error("Error sending message:", err);
       
       // Add error message to chat
-      const errorMessage: Message = { 
+      const errorMessage: ChatMessage = { 
         text: "Failed to send message. Please try again.", 
         isUser: false,
-        timestamp: new Date()
+        isVisible: true
       };
       
       setMessages(prev => [...prev, errorMessage]);
+      setCurrentSessionMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -593,14 +604,14 @@ export default function ModernChatbotUI() {
           await fetchSessions();
         }
         setSummaryText(formatMarkdownText(data.summary || data.text || `Summary of ${file.name} is ready.`));
-        const systemMessage: Message = { text: `✨ I've processed "${file.name}". Ask away!`, isUser: false, timestamp: new Date() };
+        const systemMessage: ChatMessage = { text: `✨ I've processed "${file.name}". Ask away!`, isUser: false, isVisible: true };
         setMessages(prev => [...prev, systemMessage]);
         setShowUploadPopup(false);
       } else { throw new Error('Upload failed'); }
     } catch (error) {
       console.error('Error uploading file:', error);
       setSummaryText(formatMarkdownText(`Content from ${file.name} is available for discussion.`));
-      const fallbackMessage: Message = { text: `I've received "${file.name}". Let's discuss it.`, isUser: false, timestamp: new Date() };
+      const fallbackMessage: ChatMessage = { text: `I've received "${file.name}". Let's discuss it.`, isUser: false, isVisible: true };
       setMessages(prev => [...prev, fallbackMessage]);
     } finally {
       setIsProcessingFile(false);
@@ -691,10 +702,10 @@ export default function ModernChatbotUI() {
 
         
         // Add system message
-        const systemMessage: Message = { 
+        const systemMessage: ChatMessage = { 
           text: "✨ I've processed the video. Ask away!", 
           isUser: false, 
-          timestamp: new Date() 
+          isVisible: true 
         };
         setMessages(prev => [systemMessage]);
         setShowUploadPopup(false);
@@ -778,7 +789,26 @@ export default function ModernChatbotUI() {
       setIsLoadingDiagrams(false);
     }
   };
-  
+ const fixMalformedJsonArray = (str) => {
+  const fixed = `[${str.trim()}]`;
+  try {
+    return JSON.parse(fixed);
+  } catch (e) {
+    // Optional: comment out this log
+    // console.warn("Still malformed. Trying to fix manually...");
+    
+    const matches = str.match(/\{[^}]*\}/g);
+    if (!matches) return [];
+
+    try {
+      return matches.map(obj => JSON.parse(obj));
+    } catch (e2) {
+      console.error("Final fallback parsing failed:", e2);
+      return [];
+    }
+  }
+};
+
   const loadSession = async (sessionId: string) => {
     try {
       setIsLoading(true);
@@ -798,8 +828,9 @@ export default function ModernChatbotUI() {
       
       const sessionData: SessionData = await response.json();
       
-      // Set the current session ID
+      // Set the current session ID and session data
       setCurrentSessionId(sessionId);
+      setCurrentSession(sessionData);
       localStorage.setItem("currentSessionId", sessionId);
       
       // Parse and format the summary text
@@ -819,36 +850,55 @@ export default function ModernChatbotUI() {
       // Display the formatted summary
       setSummaryText(formattedSummary);
       
-      // Parse and display messages
-      const newMessages: Message[] = [];
+     const historicalMessages: ChatMessage[] = [];
       
-      if (sessionData.user_messages && sessionData.ai_responses) {
-        const userMsgs = sessionData.user_messages.split(',');
-        const aiMsgs = sessionData.ai_responses.split(',');
-        
-        // Interleave user and AI messages
-        const maxLength = Math.max(userMsgs.length, aiMsgs.length);
-        
-        for (let i = 0; i < maxLength; i++) {
-          if (i < userMsgs.length && userMsgs[i].trim()) {
-            newMessages.push({
-              text: userMsgs[i].trim(),
-              isUser: true,
-              timestamp: new Date()
-            });
-          }
+      // Split comma-separated messages and responses
+      const userMsgs = sessionData.user_messages?.split(',').filter(msg => msg.trim() !== '') || [];
+      const aiResps = sessionData.ai_responses;
+      console.log(aiResps);
+      console.log("Type of aiResps:", typeof aiResps);
+      const parsedResponses = fixMalformedJsonArray(aiResps);
+
+      // If there are no messages, add a welcome message
+      if (userMsgs.length === 0 && aiResps.length === 0) {
+        historicalMessages.push({
+          text: "Hi, I'm here to help you! Feel free to ask me anything about this document.",
+          isUser: false,
+          isVisible: true,
+          displayedText: "Hi, I'm here to help you! Feel free to ask me anything about this document.",
+          isTyping: false
+        });
+      } else {
+        // Combine user messages and AI responses in sequence
+        userMsgs.forEach((msg, index) => {
+          // Add user message
+          historicalMessages.push({
+            text: msg.trim(),
+            isUser: true,
+            isVisible: true
+          });
           
-          if (i < aiMsgs.length && aiMsgs[i].trim()) {
-            newMessages.push({
-              text: aiMsgs[i].trim(),
+          // Assuming `parsedResponses` is the output from fixMalformedJsonArray(aiResps)
+          parsedResponses.forEach((item: { response: string }) => {
+            const rawText = item.response.trim();
+            console.log(item.response)
+            historicalMessages.push({
+              text: formatMarkdownText(item.response),
               isUser: false,
-              timestamp: new Date()
+              isVisible: true,
+              displayedText: formatMarkdownText(item.response),
+              isTyping: false
             });
-          }
-        }
+          });
+
+        });
       }
       
-      setMessages(newMessages);
+      // Replace all messages with the historical ones for the current session
+      setMessages(historicalMessages);
+      
+      // Reset current session messages when switching
+      setCurrentSessionMessages([]);
       
     } catch (error) {
       console.error("Error loading session:", error);
@@ -927,6 +977,82 @@ export default function ModernChatbotUI() {
     }
   };
 
+  // // Convert session data to animated messages format when session changes
+  // useEffect(() => {
+  //   if (currentSession) {
+  //     const historicalMessages: ChatMessage[] = [];
+      
+  //     // Split comma-separated messages and responses
+  //     const userMsgs = currentSession.user_messages?.split(',').filter(msg => msg.trim() !== '') || [];
+  //     const aiResps = currentSession.ai_responses;
+  //     const parsedResponses = fixMalformedJsonArray(aiResps);
+  //     // If there are no messages, add a welcome message
+  //     if (userMsgs.length === 0 && aiResps.length === 0) {
+  //       historicalMessages.push({
+  //         text: "Hi, I'm here to help you! Feel free to ask me anything about this document.",
+  //         isUser: false,
+  //         isVisible: true,
+  //         displayedText: "Hi, I'm here to help you! Feel free to ask me anything about this document.",
+  //         isTyping: false
+  //       });
+  //     } else {
+  //       // Combine user messages and AI responses in sequence
+  //       userMsgs.forEach((msg, index) => {
+  //         // Add user message
+  //         historicalMessages.push({
+  //           text: msg.trim(),
+  //           isUser: true,
+  //           isVisible: true
+  //         });
+          
+  //          // Assuming `parsedResponses` is the output from fixMalformedJsonArray(aiResps)
+  //         parsedResponses.forEach((item: { response: string }) => {
+  //           const rawText = item.response.trim();
+  //           console.log(item.response)
+  //           historicalMessages.push({
+  //             text: formatMarkdownText(item.response),
+  //             isUser: false,
+  //             isVisible: true,
+  //             displayedText: formatMarkdownText(item.response),
+  //             isTyping: false
+  //           });
+  //         });
+  //       });
+  //     }
+      
+  //     // Replace all messages with the historical ones for the current session
+  //     setMessages(historicalMessages);
+      
+  //     // Reset current session messages when switching
+  //     setCurrentSessionMessages([]);
+  //   }
+  // }, [currentSession]);
+  
+  // Effect to animate new messages appearing
+  useEffect(() => {
+    const newMessages = messages.filter(msg => !msg.isVisible);
+    if (newMessages.length > 0) {
+      // Add a small delay before showing the message
+      const timer = setTimeout(() => {
+        setMessages(prevMessages => 
+          prevMessages.map((msg, i) => {
+            if (!msg.isVisible) {
+              return {
+                ...msg,
+                isVisible: true,
+                displayedText: msg.isUser ? msg.text : "", // Start empty for bot messages
+                isTyping: !msg.isUser // Start typing animation for bot messages
+              };
+            }
+            return msg;
+          })
+        );
+      }, 300); // 300ms delay before showing the message
+      
+      return () => clearTimeout(timer);
+    }
+  }, [messages]);
+  
   useEffect(() => {
     // Fetch sessions when component mounts
     fetchSessions().then((fetchedSessions) => {
@@ -1043,7 +1169,7 @@ export default function ModernChatbotUI() {
               {messages.length === 0 && (<div className="flex justify-start mb-6"><div className="bg-slate-800/50 text-slate-200 px-6 py-4 rounded-2xl rounded-tl-md"><p>Hello! Ask me anything about the content.</p></div></div>)}
               {messages.map((msg, index) => (
                 <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.isUser ? "justify-end" : "justify-start"} mb-4`}>
-                  <div className={`px-5 py-3 rounded-2xl max-w-[85%] ${msg.isUser ? "bg-gradient-to-br from-violet-600 to-cyan-600 text-white rounded-br-md" : "bg-slate-800/50 text-slate-200 rounded-bl-md"}`}><p className="leading-relaxed">{msg.text}</p></div>
+                  <div className={`px-5 py-3 rounded-2xl max-w-[85%] ${msg.isUser ? "bg-gradient-to-br from-violet-600 to-cyan-600 text-white rounded-br-md" : "bg-slate-800/50 text-slate-200 rounded-bl-md"}`}><p className="leading-relaxed" dangerouslySetInnerHTML={{ __html: msg.text }}></p></div>
                 </motion.div>
               ))}
               {isLoading && (<div className="flex justify-start mb-4"><div className="bg-slate-800/50 text-slate-200 px-6 py-4 rounded-2xl rounded-tl-md"><div className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4" /><span>Thinking...</span></div></div></div>)}
